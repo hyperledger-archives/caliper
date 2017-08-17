@@ -7,7 +7,7 @@ Caliper is a general purpose blockchain benchmark framework. Some common blockch
 
 ### Adaptation Layer
 
-The adaptation layer is used to integrate specified blockchain system into Caliper framework. Each adaptor implements the 'Caliper Blockchain NBIs' by using corresponding blockchain's native SDK or RESTful API. Hyperledger Fabric1.0 and Sawtooth are current supported now, while Ethereum and Iroha are in the plan.     
+The adaptation layer is used to integrate existing blockchain system into Caliper framework. Each adaptor implements the 'Caliper Blockchain NBIs' by using corresponding blockchain's native SDK or RESTful API. Hyperledger Fabric1.0 and Sawtooth are current supported now, while Ethereum and other blockchain systems are in the plan.     
 
 ### Interface Layer
 
@@ -68,15 +68,16 @@ Below is a configuration file example:
   }
 }
 ```
-* **blockchain** - defines the type of backend's blockchain system and the configuration file of the blockchain system which defines the network topology, smart contracts, cryptographic informations, etc.
+* **blockchain** - defines the type of backend's blockchain system and the configuration file for the adaptor to prepare the test environment and interact with the backend's blockchain system.
 * **test** - defines the number of simulated clients to run the tests concurrently, as well as multiple test rounds, in each test round:
-  * **cmd** : name to this round
+  * **cmd** : command for test
   * **txNumbAndTps** : defines a array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked with a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string "*#out" is used to declare an argument with output of previous test round(see the explanation of *out* argument).
   * **callback** : specifies the user defined module used in this test round
   * **out** : name of the output of this test rounds, if exists, the output of the user defined module will be cached for later use. If multiple sub-rounds are defined, those outputs will be concatenated as a single output.   
 * **monitor** - defines the type of resource monitor and monitored objects, as well as the time interval for the monitoring.
-
+  * docker : a docker monitor is used to monitoring local docker containers. Name of the containers can be specified. 'All' means all active containers will be watched.  
+  * others : to be implemented.
 ### Master Process
 
 The default test flow contains three stages. The first is 'preparing' stage, in this stage, the application create and initialize a blockchain object with the configuration file, deploy smart contracts as specified in the configuration and start a monitor object to monitoring resource consumption of backend's blockchain system.
