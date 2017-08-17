@@ -61,7 +61,7 @@ docker rm $(docker ps -aq)
 ```     
 
 ## Write your own tests
-Caliper provides a set of nodejs NBIs for applications to interact with backend blockchain system. Check the *src/comm/blockchain/js* to find the NBIs. Multiple *Adaptors* are implemented to translate the NBIs to different blockchain protocol. So developers can write a test  once, and run the test with different blockchain systems.
+Caliper provides a set of nodejs NBIs for applications to interact with backend's blockchain system. Check the *src/comm/blockchain.js* to find the NBIs. Multiple *Adaptors* are implemented to translate the NBIs to different blockchain protocol. So developers can write a test  once, and run the test with different blockchain systems.
 
 Generally speaking, to write a new caliper test, you need to :
 * Write smart contracts for systems you want to test
