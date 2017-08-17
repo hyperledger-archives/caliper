@@ -20,7 +20,7 @@ var Blockchain = class {
         }
         else if(this.bcType === 'sawtooth') {
             var sawtooth = require('../sawtooth/sawtooth.js')
-        	this.bcObj = new sawtooth(path.join(path.dirname(configPath), args.config));
+            this.bcObj = new sawtooth(path.join(path.dirname(configPath), args.config));
         }
         else {
             throw new Error('Unknown blockchain type, ' + this.bcType);
