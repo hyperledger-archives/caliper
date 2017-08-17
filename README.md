@@ -26,7 +26,7 @@ Make sure following tools are installed
 
 Run `npm install` to install dependencies locally
 
-###Install blockchain SDKs
+### Install blockchain SDKs
 * Fabric
   * Clone [fabric-sdk-node](https://github.com/hyperledger/fabric-sdk-node) and run the headless tests to make sure everything is ok
   * Install **fabric-client** and **fabric-ca-client** from the SDK, e.g run `npm install path-to-sdk/fabric-client path-to-sdk/fabric-ca-client` in caliper's root folder, or just copy the `node_modules` from fabric-sdk-node project 
@@ -36,7 +36,7 @@ Run `npm install` to install dependencies locally
   * Install **sawtooth-sdk** from the SDK, e.g run `npm install path-to-sdk/javascript` in capliper's root folder.
 
 
-##Start a test
+## Start a test
 
 All predefined benchmark tests can be found in *capliper/benchmark* folder, starting a test is very easy, following the step:
 * Start the backend's blockchain network for test manually. Now caliper does not support starting blockchain network automatically. Some example networks are defined in *caliper/network* folder.
@@ -60,7 +60,7 @@ docker-compose down
 docker rm $(docker ps -aq)
 ```     
 
-##Write your own tests
+## Write your own tests
 Caliper provides a set of nodejs NBIs for applications to interact with backend blockchain system. Check the *src/comm/blockchain/js* to find the NBIs. Multiple *Adaptors* are implemented to translate the NBIs to different blockchain protocol. So developers can write a test  once, and run the test with different blockchain systems.
 
 Generally speaking, to write a new caliper test, you need to :
