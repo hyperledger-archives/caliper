@@ -2,8 +2,8 @@
   "name": "caliper",
   "version": "0.1.0",
   "repository": {
-    "type": "",
-    "url": ""
+    "type": "git",
+    "url": "https://github.com/Huawei-OSG/caliper"
   },
   "engines": {
     "node": ">=4.5.0",
@@ -23,7 +23,7 @@
   "licenses": [
     {
       "type": "Apache-2.0",
-      "url": ""
+      "url": "https://github.com/Huawei-OSG/caliper/blob/master/LICENSE"
     }
   ]
 }
