@@ -8,8 +8,6 @@
 
 'use strict'
 
-var fabric = require('../fabric/fabric.js');
-var sawtooth = require('../sawtooth/sawtooth.js')
 var path = require('path');
 var Blockchain = class {
     constructor(configPath) {
@@ -17,10 +15,12 @@ var Blockchain = class {
         this.bcType = args.type;
         this.bcObj = null;
         if(this.bcType === 'fabric') {
+            var fabric = require('../fabric/fabric.js');
             this.bcObj = new fabric(path.join(path.dirname(configPath), args.config));
         }
         else if(this.bcType === 'sawtooth') {
-        	this._bc_obj = new sawtooth(path.join(path.dirname(configPath), args.config));
+            var sawtooth = require('../sawtooth/sawtooth.js')
+        	this.bcObj = new sawtooth(path.join(path.dirname(configPath), args.config));
         }
         else {
             throw new Error('Unknown blockchain type, ' + this.bcType);
