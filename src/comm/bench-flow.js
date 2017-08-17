@@ -317,7 +317,7 @@ function processResult(opt, t){
     resultsbyround.push(r);
 
     var resultTable = [];
-    resultTable[0] = getResultHead();
+    resultTable[0] = getResultTitle();
     resultTable[1] = getResultValue(r);
     console.log('###test result:###');
     printTable(resultTable);
