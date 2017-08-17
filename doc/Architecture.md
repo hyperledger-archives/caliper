@@ -72,7 +72,7 @@ Below is a configuration file example:
   * **callback** : specifies the user defined module used in this test round
   * **out** : name of the output of this test rounds, if exists, the output of the user defined module will be cached for later use. If multiple sub-rounds are defined, those outputs will be concatenated as a single output.   
 * **monitor** - defines the type of resource monitor and monitored objects, as well as the time interval for the monitoring.
-  * docker : a docker monitor is used to monitoring local docker containers. Name of the containers can be specified. 'All' means all active containers will be watched.  
+  * docker : a docker monitor is used to monitoring local docker containers. Name of the containers can be specified. Reserved 'all' means all active containers will be watched.  
   * others : to be implemented.
 ### Master Process
 
