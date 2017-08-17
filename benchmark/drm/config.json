@@ -1,0 +1,30 @@
+{
+  "blockchain": {
+    "type": "fabric",
+    "config": "./fabric.json"
+  },
+  "test": {
+    "clients": 1,
+    "rounds": [
+      {
+        "cmd" : "publish",
+        "txNumbAndTps" : [[1,1]],
+        "arguments": {  "itemBytes": 2048000 },
+        "callback" : "benchmark/drm/publish.js",
+        "out" : "itemIDs"
+      },
+      {
+        "cmd" : "query",
+        "txNumbAndTps" : [[1,1]],
+        "arguments": { "itemIDs" : "*#out"},
+        "callback" : "benchmark/drm/query.js"
+      }]
+  },
+  "monitor": {
+    "type": "docker",
+    "docker":{
+      "name": ["peer0.org1.example.com", "peer1.org1.example.com", "peer0.org2.example.com", "peer1.org2.example.com", "orderer.example.com"]
+    },
+    "interval": 1
+  }
+}
