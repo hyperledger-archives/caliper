@@ -1,7 +1,3 @@
-## Overview
-
-Caliper is a general purpose blockchain benchmark framework. Some common blockchain NBIs are provided for developers to interact with underlying blockchain system, e.g installing smart contracts, invoking transactions to write values on the distributed ledger, querying values from the distributed ledger, etc. An adaptation layer is implemented to translate the NBIs to different blockchain protocols like Fabric or Sawtooth. In this way, developers can write a single test and run it on multiple blockchain systems.
-
 ## Architecture
 ![architecture](architecture.png)
 
