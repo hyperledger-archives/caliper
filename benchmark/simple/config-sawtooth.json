@@ -1,0 +1,28 @@
+{
+   "blockchain": {
+    "type": "sawtooth"
+  },
+  "test": {
+    "clients": 1,
+    "rounds": [{
+        "cmd" : "open",
+        "txNumbAndTps" : [[100,1]],
+        "arguments": {  "money": 10000 },
+        "callback" : "benchmark/simple/open.js",
+        "out" : "accounts"
+      },
+      {
+        "cmd" : "query",
+        "txNumbAndTps" : [[100, 1]],
+        "arguments": {  "accounts":  "*#out" },
+        "callback" : "benchmark/simple/query.js"
+      }]
+  },
+  "monitor": {
+    "type": "docker",
+    "docker":{
+      "name": ["all"]
+    },
+    "interval": 1
+  }
+}

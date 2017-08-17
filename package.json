@@ -1,0 +1,27 @@
+{
+  "name": "caliper",
+  "version": "0.1.0",
+  "repository": {
+    "type": "",
+    "url": ""
+  },
+  "engines": {
+    "node": ">=4.5.0",
+    "npm": ">=2.15.9"
+  },
+  "engine-strict": true,
+  "engineStrict": true,
+  "dependencies": {
+    "tape": "^4.5.1",
+    "tape-promise": "^1.1.0",
+    "systeminformation": "^3.23.7",
+    "table": "^4.0.1"
+  },
+  "license": "Apache-2.0",
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": ""
+    }
+  ]
+}
