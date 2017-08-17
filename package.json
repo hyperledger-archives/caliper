@@ -12,10 +12,12 @@
   "engine-strict": true,
   "engineStrict": true,
   "dependencies": {
-    "tape": "^4.5.1",
-    "tape-promise": "^1.1.0",
+    "request": "^2.81.0",
+    "request-promise": "^4.2.1",
     "systeminformation": "^3.23.7",
-    "table": "^4.0.1"
+    "table": "^4.0.1",
+    "tape": "^4.5.1",
+    "tape-promise": "^1.1.0"
   },
   "license": "Apache-2.0",
   "licenses": [
