@@ -1,10 +1,10 @@
 /**
-* Copyright 2017 HUAWEI All Rights Reserved.
-*
-* SPDX-License-Identifier: Apache-2.0
-*
-* @file, definition of the Sawtooth class, which implements the caliper's NBI for hyperledger sawtooth lake
-*/
+ * Copyright 2017 HUAWEI All Rights Reserved.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * @file, definition of the Sawtooth class, which implements the caliper's NBI for hyperledger sawtooth lake
+ */
 
 
 'use strict'
@@ -38,11 +38,19 @@ class Sawtooth {
 
 	invokeSmartContract(context, contractID, contractVer, args, timeout) {
 		const address = calculateAddresses(contractID, args)
-		const batchBytes = createBatch(contractID, contractVer, address, args)
+		let sawtoothContractVersion = '1.0'
+			if (contractVer === 'v0') {
+				sawtoothContractVersion = '1.0'
+			}
+		const batchBytes = createBatch(contractID, sawtoothContractVersion, address, args)
 		return submitBatches(batchBytes)
 	}
 
-	queryState(context, contractID, contractVer, queryName) {		
+	queryState(context, contractID, contractVer, queryName) {
+		let sawtoothContractVersion = '1.0'
+			if (contractVer === 'v0') {
+				sawtoothContractVersion = '1.0'
+			}
 		return querybycontext(context, contractID, contractVer, queryName)
 	}
 
@@ -55,7 +63,7 @@ module.exports = Sawtooth;
 
 const restApiUrl = 'http://127.0.0.1:8080'
 
-function querybycontext(context, contractID, contractVer, name) {
+	function querybycontext(context, contractID, contractVer, name) {
 	const address = calculateAddress(contractID, name)
 	console.log('getState address:' + address)
 	return getState(address)
@@ -77,9 +85,15 @@ function getState(address) {
 	.then(function(body) {
 		console.log('getState request response:')
 		console.log(body)
-		let stateData = (JSON.parse(body))["data"][0]["data"]
-		console.log('stateData: ' + stateData)
-		if(body.length > 0) {
+		let data = (JSON.parse(body))["data"]
+
+		if (data.length > 0) {
+			let stateDataBase64 = data[0]["data"]
+			console.log('stateDataBase64: ' + stateDataBase64)
+			let stateDataBuffer = new Buffer(stateDataBase64, 'base64')
+			let stateData = stateDataBuffer.toString('hex')
+			console.log('stateData: ' + stateData)
+
 			invoke_status.time_valid = process.uptime();
 			invoke_status.result     = stateData;
 			invoke_status.status     = 'success';
