@@ -15,11 +15,13 @@ var MonitorDocker = class {
     constructor(filter, interval) {
         this.filter       = filter;
         this.interval     = interval*1000; // ms
-        this.si           = require('systeminformation');
+        this.si           = require('systeminformation');   // TODO: does si support remote container? Maybe use original docker remote api?
         this.containers   = [];
         this.isReading    = false;
         this.intervalObj  = null;
-        /* record statistics of each container
+        this.stats = {'time': []};
+        this.hasContainters = findContainers.call(this);
+        /* this.stats : record statistics of each container
             {
                 'time' : [] // time slot
                 'container_id" : {              // refer to https://www.npmjs.com/package/systeminformatioin
@@ -35,7 +37,7 @@ var MonitorDocker = class {
                 .....
             }
         */
-        this.stats = null;
+
 
     }
 
@@ -44,22 +46,8 @@ var MonitorDocker = class {
     * @isRestart {Boolean}, indicate whether it is restarting the monitor
     * @return {Promise}
     */
-    start(isRestart) {
-        if(typeof isRestart === 'undefined') {
-            isRestart = false;
-        }
-
-        var p;
-        if(isRestart) {
-            p = Promise.resolve();
-        }
-        else {
-            this.containers = [];
-            this.stats = {'time': []};
-            p = findContainers.call(this);
-        }
-
-        return p.then( () => {
+    start() {
+        return this.hasContainters.then( () => {
             var self = this;
             function readContainerStats() {
                 if(self.isReading) {
@@ -111,13 +99,13 @@ var MonitorDocker = class {
             }
         }
 
-        return this.start(true);
+        return this.start();
     }
 
     stop() {
         clearInterval(this.intervalObj);
         this.containers = [];
-        this.stats      = null;
+        this.stats      = {'time': []};
 
         return sleep(100);
     }
