@@ -40,7 +40,7 @@ var allEventhubs = [];
 
 module.exports.run = function (config_path) {
     return new Promise(function(resolve, reject) {
-        test('\n\n***** End-to-end flow: join channel *****\n\n', function(t) {
+        test('\n\n***** join channel *****\n\n', function(t) {
             Client.addConfigFile(config_path);
             ORGS = Client.getConfigSetting('fabric').network;
 

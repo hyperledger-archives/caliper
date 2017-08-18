@@ -40,7 +40,7 @@ module.exports.run = function (config_path) {
         return Promise.resolve();
     }
     return new Promise(function(resolve, reject) {
-        test('\n\n***** End-to-end flow: install all chaincodes *****\n\n', (t) => {
+        test('\n\n***** install all chaincodes *****\n\n', (t) => {
             chaincodes.reduce(function(prev, chaincode){
                 return prev.then(() => {
                     let promises = [];

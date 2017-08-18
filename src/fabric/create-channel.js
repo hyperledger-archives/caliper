@@ -48,6 +48,8 @@ function run(config_path) {
             var channel_conf = fabric.channel.config;
             var client = new Client();
 
+            // TODO: add indicator in config to tell not to start the channel??
+
             var caRootsPath = ORGS.orderer.tls_cacerts;
             let data = fs.readFileSync(path.join(__dirname, '../..', caRootsPath));
             let caroots = Buffer.from(data).toString();
@@ -149,7 +151,7 @@ function run(config_path) {
             })
             .catch((err) => {
                 t.fail('Failed to create the channel, ' + (err.stack?err.stack:err));
-                t.end;
+                t.end();
                 return reject(new Error('Fabric: Create channel failed'));
             });
         });

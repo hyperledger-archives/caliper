@@ -40,7 +40,7 @@ module.exports.run = function (config_path) {
     }
 
     return new Promise(function(resolve, reject) {
-        test('\n\n***** End-to-end flow: instantiate chaincode *****\n\n', (t) => {
+        test('\n\n***** instantiate chaincode *****\n\n', (t) => {
             var org;
             for(let v in ORGS) {
                 if(v.indexOf('org') === 0) {
