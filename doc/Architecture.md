@@ -8,13 +8,13 @@ The adaptation layer is used to integrate existing blockchain system into Calipe
 ### Interface Layer
 
 The interface layer provides north bound interfaces for up-applications. Three kinds of NBIs are provided:
-* Blockchain operating interfaces, which contains operations to deploy smart contracts on backend's blockchain, invoking smart contracts to change states, querying states from the ledger, etc.
-* Resource monitoring interfaces, which contains operations to start/stop a monitor and fetch resource consumption status of backend's blockchain system, including CPU, memory, network IO, etc. Now only a simple monitor for local docker containers is implemented. Other kinds of monitors will be implemented later.
+* Blockchain operating interfaces, which contains operations to deploy smart contracts on backend blockchain, invoking contracts, querying states from the ledger, etc.
+* Resource monitoring interfaces, which contains operations to start/stop a monitor and fetch resource consumption status of backend blockchain system, including CPU, memory, network IO, etc. Now only a simple monitor for local docker containers is implemented. Other kinds of monitors will be implemented later.
 * Performance measuring interfaces, which contains operations to read predefined performance statistics, including TPS, delay, success ratio, etc. Key metrics are recorded while invoking blockchain NBIs, e.g created time and committed time of the transaction, result of the transaction, etc. Those metrics are used later to generate the statistics.
    
 ### Application Layer
 
-The application layer contains some tests implemented for typical blockchain scenarios. Each test has a configuration file to define the backend's blockchain network and test arguments. Those tests can be used directly to test the performance of the blockchain system.
+The application layer contains some tests implemented for typical blockchain scenarios. Each test has a configuration file to define the backend blockchain network and test arguments. Those tests can be used directly to test the performance of the blockchain system.
 
 A default test framework is implemented to help developers to implement their own test quickly. How to use the test framework is explained in the latter part. Of course, developers can use NBIs directly to implement their test without the framework.
 
@@ -64,7 +64,7 @@ Below is a configuration file example:
   }
 }
 ```
-* **blockchain** - defines the type of backend's blockchain system and the configuration file for the adaptor to prepare the test environment and interact with the backend's blockchain system.
+* **blockchain** - defines the type of backend blockchain system and the configuration file for the adaptor to prepare the test environment and interact with the backend blockchain system.
 * **test** - defines the number of simulated clients to run the tests concurrently, as well as multiple test rounds, in each test round:
   * **cmd** : command for test
   * **txNumbAndTps** : defines a array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked with a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
@@ -76,7 +76,7 @@ Below is a configuration file example:
   * others : to be implemented.
 ### Master Process
 
-The default test flow contains three stages. The first is 'preparing' stage, in this stage, the application create and initialize a blockchain object with the configuration file, deploy smart contracts as specified in the configuration and start a monitor object to monitoring resource consumption of backend's blockchain system.
+The default test flow contains three stages. The first is 'preparing' stage, in this stage, the application create and initialize a blockchain object with the configuration file, deploy smart contracts as specified in the configuration and start a monitor object to monitoring resource consumption of backend blockchain system.
 
 The second stage is 'testing' stage. The application start a loop to do the test according to the *test* argument. In each test round, multiple child processes are forked to perform the task. Testing results from each child process are recorded for later use.
     
@@ -84,7 +84,7 @@ The final stage is 'finishing' stage. Performance statistics is generated in thi
 
 ### Child Process
 
-Nodejs is single-threaded by nature. The default test framework uses cluster to do the actual testing tasks to improve throughput on multi-core machines. The total workload will be divided and assigned equally to child processes. A child process acts as a blockchain client with a temporarily generated context to interact with the backend's blockchain system. The context usually contains the client's identity and cryptographic materials, and will be released after all the testing tasks are finished.
+Nodejs is single-threaded by nature. The default test framework uses cluster to do the actual testing tasks to improve throughput on multi-core machines. The total workload will be divided and assigned equally to child processes. A child process acts as a blockchain client with a temporarily generated context to interact with the backend blockchain system. The context usually contains the client's identity and cryptographic materials, and will be released after all the testing tasks are finished.
   
 The actual testing task should be implemented in independent modules with specific functions exported. The child process imports such modules to perform actual transactions asynchronously.
  
