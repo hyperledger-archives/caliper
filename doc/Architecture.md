@@ -58,7 +58,7 @@ Below is a configuration file example:
   "monitor": {
     "type": "docker",
     "docker":{
-      "name": ["peer0.org1.example.com", "http://192.168.1.100/orderer.example.com"]
+      "name": ["peer0.org1.example.com", "http://192.168.1.100:2375/orderer.example.com"]
     },
     "interval": 1
   }
@@ -72,7 +72,7 @@ Below is a configuration file example:
   * **callback** : specifies the user defined module used in this test round
   * **out** : name of the output of this test rounds, if exists, the output of the user defined module will be cached for later use. If multiple sub-rounds are defined, those outputs will be concatenated as a single output.   
 * **monitor** - defines the type of resource monitor and monitored objects, as well as the time interval for the monitoring.
-  * docker : a docker monitor is used to monitor specified docker containers. Name of the containers can be specified. Docker Remote API is used to retrieve remote container's status. Reserved container name 'all' means all containers on the host will be watched.  
+  * docker : a docker monitor is used to monitor specified docker containers on local or remote hosts. Docker Remote API is used to retrieve remote container's stats. Reserved container name 'all' means all containers on the host will be watched. In above example, the monitor will retrieve the stats of two containers per second, one is a local container names 'peer0.org1.example.com' and another is a remote container names 'orderer.example.com' located on host '192.168.1.100', 2375 is the listening port of Docker on that host.  
   * others : to be implemented.
 ### Master Process
 
