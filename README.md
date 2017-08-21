@@ -41,11 +41,12 @@ Run `npm install` to install dependencies locally
 All predefined benchmark tests can be found in *capliper/benchmark* folder, starting a test is very easy, following the step:
 * Start the backend blockchain network for test manually. Now caliper does not support starting blockchain network automatically. Some example networks are defined in *caliper/network* folder.
   * Fabric - Fabric SDK supports creating channel and installing/instantiating smart contracts(a.k.a chaincodes) dynamically. Corresponding arguments can be defined in the configuration file (see the next step) and be used by fabric adaptor to prepare the test environment on demand.
-  * Sawtooth -    
+  * Sawtooth - Sawtooth needs to install/instantiate smart contracts (a.k.a transaction families) manually. Corresponding arguments can be defined in the configuration file (see the next step) and be used by the sawtooth adaptor to prepare the test environment on demand. In the following example, the simple transaction family is started along with the sawtooth network. 
 * Go into the use case folder you want to test, modify the configuration file to define the network started in step 1, as well as  other testing arguments. For more details of configuration, please refer to [Configuration Introduction](./doc/Architecture.md#configuration-file). 
 * Run `node yourtest.js yourconfig.json` to start the test. Usually, the test file has the same name as the test case. If configuration file is not specified, *config.json* will be used by default.
 
-Example:
+
+Fabric Example:
 ```bash
 # start a predefined fabric network
 cd ~/caliper/network/fabric/simplenetwork
@@ -59,6 +60,20 @@ node simple.js
 docker-compose down
 docker rm $(docker ps -aq)
 ```     
+
+Sawtooth Example:
+```bash
+# start a predefined sawtooth network
+cd ~/caliper/network/sawtooth/simplenetwork
+docker-compose -f sawtooth-default-validators-simple.yaml up
+
+# start the simple test case, config-sawtooth.json is used
+cd ~/caliper/benchmark/simple
+node simple.js config-sawtooth.json
+
+# clear the environment after the test
+docker-compose -f sawtooth-default-validators-simple.yaml down
+docker rm $(docker ps -aq)    
 
 ## Write your own tests
 Caliper provides a set of nodejs NBIs for applications to interact with backend blockchain system. Check the *src/comm/blockchain.js* to find the NBIs. Multiple *Adaptors* are implemented to translate the NBIs to different blockchain protocol. So developers can write a test  once, and run the test with different blockchain systems.
