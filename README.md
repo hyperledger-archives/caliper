@@ -41,7 +41,7 @@ Run `npm install` to install dependencies locally
 All predefined benchmark tests can be found in *capliper/benchmark* folder, starting a test is very easy, following the step:
 * Start the backend blockchain network for test manually. Now caliper does not support starting blockchain network automatically. Some example networks are defined in *caliper/network* folder.
   * Fabric - Fabric SDK supports creating channel and installing/instantiating smart contracts(a.k.a chaincodes) dynamically. Corresponding arguments can be defined in the configuration file (see the next step) and be used by fabric adaptor to prepare the test environment on demand.
-  * Sawtooth - Sawtooth needs to install/instantiate smart contracts (a.k.a transaction families) manually. Corresponding arguments can be defined in the configuration file (see the next step) and be used by the sawtooth adaptor to prepare the test environment on demand. In the following example, the simple transaction family is started along with the sawtooth network. 
+  * Sawtooth - Sawtooth's transaction families must be installed before the test. Please see the example in *caliper/network/sawtooth/simplenetwork*, which can be used to start a sawtooth network along with the transaction family. 
 * Go into the use case folder you want to test, modify the configuration file to define the network started in step 1, as well as  other testing arguments. For more details of configuration, please refer to [Configuration Introduction](./doc/Architecture.md#configuration-file). 
 * Run `node yourtest.js yourconfig.json` to start the test. Usually, the test file has the same name as the test case. If configuration file is not specified, *config.json* will be used by default.
 
