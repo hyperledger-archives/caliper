@@ -66,10 +66,10 @@ Below is a configuration file example:
 ```
 * **blockchain** - defines the type of backend blockchain system and the configuration file for the adaptor to prepare the test environment and interact with the backend blockchain system.
 * **test** - defines the number of simulated clients to run the tests concurrently, as well as multiple test rounds, in each test round:
-  * **cmd** : command for test
+  * **cmd** : command for test, this is only a hint for the test. 
   * **txNumbAndTps** : defines a array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked with a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string "*#out" is used to declare an argument with output of previous test round(see the explanation of *out* argument).
-  * **callback** : specifies the user defined module used in this test round
+  * **callback** : specifies the user defined module used in this test round. Please see [User defined test module](#user-defined-test-module) to learn more details.
   * **out** : name of the output of this test rounds, if exists, the output of the user defined module will be cached for later use. If multiple sub-rounds are defined, those outputs will be concatenated as a single output.   
 * **monitor** - defines the type of resource monitor and monitored objects, as well as the time interval for the monitoring.
   * docker : a docker monitor is used to monitor specified docker containers on local or remote hosts. Docker Remote API is used to retrieve remote container's stats. Reserved container name 'all' means all containers on the host will be watched. In above example, the monitor will retrieve the stats of two containers per second, one is a local container names 'peer0.org1.example.com' and another is a remote container names 'orderer.example.com' located on host '192.168.1.100', 2375 is the listening port of Docker on that host.  
