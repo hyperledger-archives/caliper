@@ -74,6 +74,7 @@ node simple.js config-sawtooth.json
 # clear the environment after the test
 docker-compose -f sawtooth-default-validators-simple.yaml down
 docker rm $(docker ps -aq)    
+```
 
 ## Write your own tests
 Caliper provides a set of nodejs NBIs for applications to interact with backend blockchain system. Check the *src/comm/blockchain.js* to find the NBIs. Multiple *Adaptors* are implemented to translate the NBIs to different blockchain protocol. So developers can write a test  once, and run the test with different blockchain systems.
