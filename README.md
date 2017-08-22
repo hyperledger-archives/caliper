@@ -2,7 +2,7 @@
 
 Caliper is a general purpose blockchain benchmark framework, which allows users to test different blockchain solutions with predefined use cases, and get a set of perfomance test results.
 
-Currently supported blockchain soultions:
+Currently supported blockchain solutions:
 * [fabric 1.0](https://github.com/hyperledger/fabric)
 * [sawtooth](https://github.com/hyperledger/sawtooth-core) 
 
