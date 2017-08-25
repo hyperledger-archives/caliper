@@ -27,7 +27,7 @@ class Sawtooth {
 		// todo:        
 	}
 
-	getContext() {
+	getContext(name) {
 		return Promise.resolve();
 
 	}

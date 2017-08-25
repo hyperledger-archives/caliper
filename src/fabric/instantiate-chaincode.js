@@ -32,48 +32,32 @@ var Client   = require('fabric-client')
 module.exports.run = function (config_path) {
     Client.addConfigFile(config_path);
     var fabricSettings = Client.getConfigSetting('fabric');
-    var policy         = fabricSettings['endorsement-policy'];
+    var policy         = fabricSettings['endorsement-policy'];  // TODO: support mulitple policies
     var chaincodes     = fabricSettings.chaincodes;
-    var ORGS           = fabricSettings.network;
     if(typeof chaincodes === 'undefined' || chaincodes.length === 0) {
         return Promise.resolve();
     }
 
     return new Promise(function(resolve, reject) {
         test('\n\n***** instantiate chaincode *****\n\n', (t) => {
-            var org;
-            for(let v in ORGS) {
-                if(v.indexOf('org') === 0) {
-                    org = v;
-                    break;
-                }
-            }
-            if(typeof org === 'undefined') {
-                t.fail('Failed to instantiate chaincodes: could not found org in config file')
-                t.end();
-                reject(new Error('Fabric: Instantiate channel failed'));
-            }
-            else {
-                chaincodes.reduce(function(prev, chaincode){
-                    return prev.then(() => {
-                        return e2eUtils.instantiateChaincode(org, chaincode, policy, false, t).then(() => {
-                            t.pass('Instantiated chaincode ' + chaincode.id + ' successfully ');
-                            t.comment('Sleep 5s...');
-                            return sleep(5000);
-                        });
+            chaincodes.reduce(function(prev, chaincode){
+                return prev.then(() => {
+                    return e2eUtils.instantiateChaincode(chaincode, policy, false, t).then(() => {
+                        t.pass('Instantiated chaincode ' + chaincode.id + ' successfully ');
+                        t.comment('Sleep 5s...');
+                        return sleep(5000);
                     });
-                }, Promise.resolve())
-                .then(() => {
-                    t.pass('Instantiated all chaincodes successfully');
-                    t.end();
-                    return resolve();
-                })
-                .catch((err) => {
-                    t.pass('Failed to instantiate chaincodes, ' + (err.stack?err.stack:err));
-                    t.end();
-                    return reject(new Error('Fabric: Create channel failed'));
                 });
-            }
+            }, Promise.resolve())
+            .then(() => {
+                t.end();
+                return resolve();
+            })
+            .catch((err) => {
+                t.pass('Failed to instantiate chaincodes, ' + (err.stack?err.stack:err));
+                t.end();
+                return reject(new Error('Fabric: Create channel failed'));
+            });
         });
     });
 };

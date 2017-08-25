@@ -25,10 +25,10 @@ var Fabric = class {
         return 'fabric';
     }
 
+
     init() {
         util.init(this.configPath);
         e2eUtils.init(this.configPath);
-        // todo: now only one channel is supported, and all peers will join that channel, should extend this later
         return impl_create.run(this.configPath).then(() => {
             return impl_join.run(this.configPath);
         })
@@ -49,12 +49,28 @@ var Fabric = class {
         });
     }
 
-    getContext() {
+    getContext(name) {
         util.init(this.configPath);
         e2eUtils.init(this.configPath);
 
+        var config  = require(this.configPath);
+        var context = config.fabric.context;
+        var channel;
+        if(typeof context === 'undefined') {
+            channel = util.getDefaultChannel();
+        }
+        else{
+            channel = util.getChannel(context[name]);
+        }
+
+        if(!channel) {
+            return Promise.reject(new Error("could not find context's information in config file"));
+        }
+
+        return e2eUtils.getcontext(channel);
+
         // find a random org as client's org
-        var ORGS = require(this.configPath).fabric.network;
+        /*var ORGS = require(this.configPath).fabric.network;
         var name = [];
         for(let v in ORGS) {
             if(v.indexOf('org') === 0) {
@@ -65,7 +81,8 @@ var Fabric = class {
             return Promise.reject(new Error('Failed to find org in config file'));
         }
         var id = Math.floor(Math.random() * name.length);
-        return e2eUtils.getcontext(name[id]);
+        return e2eUtils.getcontext(name[id]);*/
+
     }
 
     releaseContext(context) {

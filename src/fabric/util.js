@@ -33,13 +33,22 @@ var Constants = require('./constant.js');
 
 var logger = require('fabric-client/lib/utils.js').getLogger('TestUtil');
 
-var channel = 'mychannel'
+var channels = [];
 var cryptodir;
 var rootpath = '../..'
 var ORGS;
 
-module.exports.getChannel = function() {
-    return channel;
+module.exports.getChannel = function(name) {
+    for(let i in channels) {
+        if(channels[i].name === name) {
+            return channels[i];
+        }
+    }
+    return null;
+}
+
+module.exports.getDefaultChannel = function() {
+    return channels[0];
 }
 
 // all temporary files and directories are created under here
@@ -102,7 +111,7 @@ module.exports.init = function(config_path) {
     Client.addConfigFile(config_path);
     var fa = Client.getConfigSetting('fabric');
     ORGS = fa.network;
-    channel = fa.channel.name;
+    channels = fa.channel;
     cryptodir = fa.cryptodir;
 }
 

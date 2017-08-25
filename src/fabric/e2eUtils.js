@@ -52,7 +52,7 @@ module.exports.init = init;
 *********************/
 function installChaincode(org, chaincode, t) {
 	Client.setConfigSetting('request-timeout', 60000);
-	var channel_name = Client.getConfigSetting('E2E_CONFIGTX_CHANNEL_NAME', testUtil.getChannel());
+	var channel_name = chaincode.channel;
 
 	var client  = new Client();
 	var channel = client.newChannel(channel_name);
@@ -146,9 +146,15 @@ function installChaincode(org, chaincode, t) {
 module.exports.installChaincode = installChaincode;
 
 
-function instantiateChaincode(userOrg, chaincode, endorsement_policy, upgrade, t){
+function instantiateChaincode(chaincode, endorsement_policy, upgrade, t){
 	Client.setConfigSetting('request-timeout', 120000);
-	var channel_name = Client.getConfigSetting('E2E_CONFIGTX_CHANNEL_NAME', testUtil.getChannel());
+
+    var channel = testUtil.getChannel(chaincode.channel);
+    if(channel === null) {
+        return Promise.reject(new Error('could not find channel in config'));
+    }
+	var channel_name = channel.name;
+	var userOrg      = channel.organizations[0];
 
 	var targets = [],
 		eventhubs = [];
@@ -365,9 +371,10 @@ function buildChaincodeProposal(client, the_user, chaincode, upgrade, transientM
 module.exports.instantiateChaincode = instantiateChaincode;
 
 
-function getcontext(userOrg) {
+function getcontext(channel) {
     Client.setConfigSetting('request-timeout', 60000);
-	var channel_name = Client.getConfigSetting('E2E_CONFIGTX_CHANNEL_NAME', testUtil.getChannel());
+	var channel_name = channel.name;
+	var userOrg = channel.organizations[0];
     var client  = new Client();
 	var channel = client.newChannel(channel_name);
 	var orgName = ORGS[userOrg].name;

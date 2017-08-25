@@ -56,10 +56,11 @@ var Blockchain = class {
 
     /**
     * get a system context that will be used to interact with backend's blockchain system
+    * @name {string}, name of the context
     * @return {Promise.resolve(context)}
     */
-    getContext() {
-        return this.bcObj.getContext();
+    getContext(name) {
+        return this.bcObj.getContext(name);
     }
 
     /**

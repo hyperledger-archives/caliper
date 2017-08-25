@@ -41,7 +41,7 @@ function doTest(msg) {
     var bcContext;
     var bcResults;
 
-    return blockchain.getContext()
+    return blockchain.getContext(msg.cmd)
     .then((context) => {
         bcContext = context;
         var rounds   = Array(msg.numb).fill(0);

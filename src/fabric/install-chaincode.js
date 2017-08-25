@@ -35,7 +35,6 @@ module.exports.run = function (config_path) {
     testUtil.setupChaincodeDeploy();
     var fabricSettings = Client.getConfigSetting('fabric');
     var chaincodes     = fabricSettings.chaincodes;
-    var ORGS           = fabricSettings.network;
     if(typeof chaincodes === 'undefined' || chaincodes.length === 0) {
         return Promise.resolve();
     }
@@ -44,10 +43,12 @@ module.exports.run = function (config_path) {
             chaincodes.reduce(function(prev, chaincode){
                 return prev.then(() => {
                     let promises = [];
-                    for(let v in ORGS) {
-                        if(v.indexOf('org') === 0) {
-                            promises.push(e2eUtils.installChaincode(v, chaincode, t));
-                        }
+                    let channel  = testUtil.getChannel(chaincode.channel);
+                    if(channel === null) {
+                        throw new Error('could not find channel in config');
+                    }
+                    for(let v in channel.organizations) {
+                        promises.push(e2eUtils.installChaincode(channel.organizations[v], chaincode, t));
                     }
 
                     return Promise.all(promises).then(() => {
@@ -57,7 +58,6 @@ module.exports.run = function (config_path) {
                 });
             }, Promise.resolve())
             .then(() => {
-                t.pass('Installed all chaincodes successfully ');
                 t.end();
                 return resolve();
             })

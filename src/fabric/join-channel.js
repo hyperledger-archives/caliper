@@ -39,11 +39,15 @@ var ORGS;
 var allEventhubs = [];
 
 module.exports.run = function (config_path) {
+    Client.addConfigFile(config_path);
+    var fabric   = Client.getConfigSetting('fabric');
+    var channels = fabric.channel;
+    if(!channels || channels.length === 0) {
+        return Promise.resolve();
+    }
+    ORGS = Client.getConfigSetting('fabric').network;
     return new Promise(function(resolve, reject) {
         test('\n\n***** join channel *****\n\n', function(t) {
-            Client.addConfigFile(config_path);
-            ORGS = Client.getConfigSetting('fabric').network;
-
             // override t.end function so it'll always disconnect the event hub
             t.end = ((context, ehs, f) => {
                 return function() {
@@ -59,20 +63,20 @@ module.exports.run = function (config_path) {
                 };
             })(t, allEventhubs, t.end);
 
-            var peers = [];
-            for(let v in ORGS) {
-                if(v.indexOf('org') === 0) {
-                    peers.push(v);
-                }
-            }
-
-            peers.reduce(function(prev, item) {
+            return channels.reduce((prev, channel)=>{
                 return prev.then(() => {
-                    return joinChannel(item, t);
-                })
+                    t.comment('join ' + channel.name);
+                    let promises = [];
+                    channel.organizations.forEach((org, index) => {
+                        promises.push(joinChannel(org, channel.name, t));
+                    });
+                    return Promise.all(promises).then(()=>{
+                        t.pass('Successfully joined ' + channel.name);
+                        return Promise.resolve();
+                    });
+                });
             }, Promise.resolve())
             .then(() => {
-                t.pass('Joined peers successfully');
                 t.end();
                 return resolve();
             })
@@ -85,20 +89,13 @@ module.exports.run = function (config_path) {
     });
 }
 
-function joinChannel(org, t) {
-	t.comment(util.format('Calling peers in organization "%s" to join the channel', org));
-
-	var channel_name = Client.getConfigSetting('E2E_CONFIGTX_CHANNEL_NAME', testUtil.getChannel());
-	//
-	// Create and configure the test channel
-	//
+function joinChannel(org, channelName, t) {
 	var client  = new Client();
-	var channel = client.newChannel(channel_name);//client.newChannel(channel_name);
+	var channel = client.newChannel(channelName);
 
 	var orgName = ORGS[org].name;
 
-	var targets = [],
-		eventhubs = [];
+	var targets = [], eventhubs = [];
 
 	var caRootsPath = ORGS.orderer.tls_cacerts;
 	let data = fs.readFileSync(path.join(__dirname, rootpath, caRootsPath));
@@ -139,30 +136,30 @@ function joinChannel(org, t) {
 		the_user = admin;
 		for (let key in ORGS[org]) {
 			if (ORGS[org].hasOwnProperty(key)) {
-				if (key.indexOf('peer') === 0) {
-					data = fs.readFileSync(path.join(__dirname, rootpath, ORGS[org][key]['tls_cacerts']));
-					targets.push(
-						client.newPeer(
-							ORGS[org][key].requests,
-							{
-								pem: Buffer.from(data).toString(),
-								'ssl-target-name-override': ORGS[org][key]['server-hostname']
-							}
-						)
-					);
+			    if(key.indexOf('peer') === 0) {
+                    data = fs.readFileSync(path.join(__dirname, rootpath, ORGS[org][key]['tls_cacerts']));
+                    targets.push(
+                        client.newPeer(
+                            ORGS[org][key].requests,
+                            {
+                                pem: Buffer.from(data).toString(),
+                                'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                            }
+                        )
+                    );
 
-					let eh = new EventHub(client);  //client.newEventHub();
-					eh.setPeerAddr(
-						ORGS[org][key].events,
-						{
-							pem: Buffer.from(data).toString(),
-							'ssl-target-name-override': ORGS[org][key]['server-hostname']
-						}
-					);
-					eh.connect();
-					eventhubs.push(eh);
-					allEventhubs.push(eh);
-				}
+                    let eh = new EventHub(client);  //client.newEventHub();
+                    eh.setPeerAddr(
+                        ORGS[org][key].events,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                        }
+                    );
+                    eh.connect();
+                    eventhubs.push(eh);
+                    allEventhubs.push(eh);
+                }
 			}
 		}
 
@@ -179,7 +176,7 @@ function joinChannel(org, t) {
 					if(block.data.data.length === 1) {
 						// Config block must only contain one transaction
 						var channel_header = block.data.data[0].payload.header.channel_header;
-						if (channel_header.channel_id === channel_name) {
+						if (channel_header.channel_id === channelName) {
 							resolve();
 						}
 						else {
