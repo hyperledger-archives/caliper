@@ -12,7 +12,7 @@ Currently supported performance indicators:
 * Transaction confirmation latency
 * Resource consumption (CPU, Memory, Network IO,...)
 
-To learn more details, please refer to [Architecture introduction](doc/Architecture.md). 
+To learn more details, please refer to [Architecture introduction](docs/Architecture.md). 
 
 ## Build
 
@@ -42,7 +42,7 @@ All predefined benchmark tests can be found in [*capliper/benchmark*](./benchmar
 * Start the backend blockchain network for test manually. Now caliper does not support starting blockchain network automatically. Some example networks are defined in *caliper/network* folder.
   * Fabric - Fabric SDK supports creating channel and installing/instantiating smart contracts (a.k.a chaincodes) dynamically. Corresponding arguments can be defined in the configuration file (see the next step) and be used by fabric adaptor to prepare the test environment on demand.
   * Sawtooth - Sawtooth's transaction families must be installed before the test. Please see the example at [*caliper/network/sawtooth/simplenetwork*](./network/sawtooth/simplenetwork), which can be used to start a sawtooth network along with the transaction family. 
-* Go to the use case folder you want to test, modify the configuration file to config the network started in step 1, as well as  other testing arguments. For more details of configuration, please refer to [Configuration Introduction](./doc/Architecture.md#configuration-file). 
+* Go to the use case folder you want to test, modify the configuration file to config the network started in step 1, as well as  other testing arguments. For more details of configuration, please refer to [Configuration Introduction](./docs/Architecture.md#configuration-file). 
 * Run `node yourtest.js yourconfig.json` to start the test. Usually, the test file has the same name as the test case. If configuration file is not specified, *config.json* will be used as default.
 
 
@@ -81,7 +81,7 @@ Caliper provides a set of nodejs NBIs (North Bound Interfaces) for applications 
 
 Generally speaking, to write a new caliper test, you need to:
 * Write smart contracts for systems you want to test
-* Write a test flow using caliper NBIs. Caliper provides a default test framework, which can be used easily to write a new test. For more details, please refer to [Test Framework](./doc/Architecture.md#test-framework) .
+* Write a test flow using caliper NBIs. Caliper provides a default test framework, which can be used easily to write a new test. For more details, please refer to [Test Framework](./docs/Architecture.md#test-framework) .
 * Write a configuration file to define the backend network and test arguments.
 
 
