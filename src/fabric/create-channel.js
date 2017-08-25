@@ -40,7 +40,7 @@ var the_user = null;
 function run(config_path) {
 
     return new Promise(function(resolve, reject) {
-        test('\n\n***** SDK Built config update  create flow  *****\n\n', function(t) {
+        test('\n\n***** create channels  *****\n\n', function(t) {
             Client.addConfigFile(config_path);
             var fabric = Client.getConfigSetting('fabric');
             var ORGS = fabric.network;
@@ -48,7 +48,7 @@ function run(config_path) {
             var channel_conf = fabric.channel.config;
             var client = new Client();
 
-            // TODO: add indicator in config to tell not to start the channel??
+            // TODO: 1. multiple channels support 2. add indicator in config to tell not to start the channel in case the channel has already benn created
 
             var caRootsPath = ORGS.orderer.tls_cacerts;
             let data = fs.readFileSync(path.join(__dirname, '../..', caRootsPath));
@@ -87,6 +87,8 @@ function run(config_path) {
                 // use the config update created by the configtx tool
                 let envelope_bytes = fs.readFileSync(path.join(__dirname, '../..', channel_conf));
                 config = client.extractChannelConfig(envelope_bytes);
+
+                // TODO: read from channel config instead of binary tx file
 
                 // enroll orgs one by one
                 return orgarray.reduce(function(prev, item){

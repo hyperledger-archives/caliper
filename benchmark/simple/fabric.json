@@ -54,16 +54,7 @@
     },
     "channel": {
       "name": "mychannel",
-      "config": "network/fabric/simplenetwork/mychannel.tx",
-      "consortium": "SampleConsortium",
-      "peers": {
-        "organizations": [{"id": "Org1MSP", "policies": {}}, {"id": "Org2MSP", "policies": {}}],
-        "policies": {
-          "Admins":  {"threshold": "MAJORITY"},
-          "Writers": {"threshold": "ANY"},
-          "Readers": {"threshold": "ANY"}
-        }
-      }
+      "config": "network/fabric/simplenetwork/mychannel.tx"
     },
     "chaincodes": [{"id": "simple", "path": "contract/fabric/simple", "version": "v0"}],
     "endorsement-policy": {
@@ -87,7 +78,7 @@
           }
         }
       ],
-      "policy": { "1-of": [{"signed-by": 0}, {"signed-by": 1}]}
+      "policy": { "2-of": [{"signed-by": 0}, {"signed-by": 1}]}
     }
   }
 }
