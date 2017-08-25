@@ -1,15 +1,15 @@
 ## Caliper Introduction
 
-Caliper is a general purpose blockchain benchmark framework, which allows users to test different blockchain solutions with predefined use cases, and get a set of performance test results.
+Caliper is a blockchain performance benchmark framework, which allows users to test different blockchain solutions with predefined use cases, and get a set of performance test results.
 
 Currently supported blockchain solutions:
 * [fabric 1.0](https://github.com/hyperledger/fabric)
 * [sawtooth](https://github.com/hyperledger/sawtooth-core) 
 
 Currently supported performance indicators:
-* Success ratio
-* Transactions per second (TPS)
-* Transaction committing delay
+* Success rate
+* Throughput (TPS)
+* Transaction confirmation latency
 * Resource consumption (CPU, Memory, Network IO,...)
 
 To learn more details, please refer to [Architecture introduction](doc/Architecture.md). 
@@ -83,7 +83,7 @@ Generally speaking, to write a new caliper test, you need to:
 * Write smart contracts for systems you want to test
 * Write a test flow using caliper NBIs. Caliper provides a default test framework, which can be used easily to write a new test. For more details, please refer to [Test Framework](./doc/Architecture.md#test-framework) .
 * Write a configuration file to define the backend network and test arguments.
-* *TODO: Write a document about developing the test cases.*
+
 
   
  
