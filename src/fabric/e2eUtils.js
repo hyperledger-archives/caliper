@@ -210,7 +210,7 @@ function instantiateChaincode(chaincode, endorsement_policy, upgrade, t){
 		the_user = admin;
 
 		for(let org in ORGS) {
-		    if(ORGS[org].hasOwnProperty('peer1')) {
+		    if(org.indexOf('org') === 0) {
 		        for (let key in ORGS[org]) {
 		            if(key.indexOf('peer') === 0) {
 		                let data = fs.readFileSync(path.join(__dirname, rootPath, ORGS[org][key]['tls_cacerts']));
@@ -407,6 +407,7 @@ function getcontext(channel) {
 	}).then((admin) => {
 		the_user = admin;
 
+		// TODO: should ignore using fixed peer name
 		// set up the channel to use each org's 'peer1' for
 		// both requests and events
 		for (let key in ORGS) {
@@ -486,6 +487,7 @@ function invokebycontext(context, id, version, args, timeout){
     };
     var pass_results = null;
 
+    // TODO: should check how to deal with the endorsement policy?
 	// send proposal to endorser
 	var f = args[0];
 	args.shift();
