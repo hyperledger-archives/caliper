@@ -66,7 +66,7 @@ Below is a configuration file example:
 ```
 * **blockchain** - defines the type of backend blockchain system and the configuration file for the adaptor to prepare the test environment and interact with the backend blockchain system.
 * **test** - defines the number of simulated clients to run the tests concurrently, as well as multiple test rounds, in each test round:
-  * **cmd** : command for test, this is only a hint for the test. 
+  * **cmd** : command for test, this is only a hint for the test and also be used as the context name for *blockchain.getContext()*. 
   * **txNumbAndTps** : defines an array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked at a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string `*#out` is used to declare an argument with output of previous test round (see the explanation of *out* argument).
   * **callback** : specifies the user defined module used in this test round. Please see [User defined test module](#user-defined-test-module) to learn more details.
@@ -86,6 +86,8 @@ The final stage is 'finishing' stage. Performance statistics is generated in thi
 ### Child Process
 
 Nodejs is single-threaded by nature. The default test framework uses cluster to do the actual testing tasks to improve throughput on multi-core machines. The total workload are divided and assigned equally to child processes. A child process acts as a blockchain client with a temporarily generated context to interact with the backend blockchain system. The context usually contains the client's identity and cryptographic materials, and will be released after all the testing tasks are finished.
+
+For Hyperledger Fabric, the context is bound to a specific channel, the relationship is defined in fabric configuration file. 
   
 The actual testing task should be implemented in independent modules with specific functions exported. The child process imports such modules to perform actual transactions asynchronously.
  
