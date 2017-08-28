@@ -1,4 +1,5 @@
-A typical fabric json object contains 6 main elements:
+## Fabric Configuration
+The fabric configuration is json file which defines a fabric object with six main properties:
 
 * **cryptodir**: defines a relative path of the crypto directory which contains all cryptographic materials, all paths defined in the configuration are relative paths to the fabric root directory. The crypto directory structure must be identical with the output of fabric's cryptogen tool. The sub-directories names must match organizations' names defined in *network* element. The certificates and private keys in this directory are used by Caliper to act as the administrator or the member of corresponding organization to interact with fabric network, e.g to create channel, join channel, install chaincode, invoke chaincode, etc.      
  
@@ -91,7 +92,7 @@ A typical fabric json object contains 6 main elements:
 }
 ```
 
-* **context**:defines a set of context to tell Caliper which fabric channle will be interacted with later. The context name(key) is the name of the test defined by *test.rounds[x].cmd* in the test configuration file if the default [test framework](./Architecture.md#test-framework) is used. The information is used by getContext() function to create a fabric client for later use, and register block events with appropriate peers.
+* **context**:defines a set of context to tell Caliper which fabric channle will be interacted with later. The context name(key) is the name of the test round defined by *test.rounds[x].cmd* in the test configuration file if the default [test framework](./Architecture.md#test-framework) is used. In this way, developers could use different fabric environment for different test rounds. The information is used by getContext() function to properly create a fabric client for later use, and register block events with appropriate peers.
 ```json
 {
   "context": {
