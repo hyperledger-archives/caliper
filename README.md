@@ -81,10 +81,17 @@ Caliper provides a set of nodejs NBIs (North Bound Interfaces) for applications 
 
 Generally speaking, to write a new caliper test, you need to:
 * Write smart contracts for systems you want to test
-* Write a test flow using caliper NBIs. Caliper provides a default test framework, which can be used easily to write a new test. For more details, please refer to [Test Framework](./docs/Architecture.md#test-framework) .
+* Write a test flow using caliper NBIs. Caliper provides a default test framework, which is plugable and configurable to integrate new tests easily. For more details, please refer to [Test Framework](./docs/Architecture.md#test-framework) .
 * Write a configuration file to define the backend network and test arguments.
 
-
+## Directory Structure
+**Directory** | **Description**
+------------------ | --------------
+/benchmark | Samples of the blockchain test cases
+/docs | Documents
+/network | Boot configuration files used to deploy some predefined blockchain network for test.
+/src | Souce code of the framework
+/src/contract | Smart contracts for different blockchain systems
   
  
 
