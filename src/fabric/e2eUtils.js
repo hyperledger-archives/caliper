@@ -370,11 +370,15 @@ function buildChaincodeProposal(client, the_user, chaincode, upgrade, transientM
 
 module.exports.instantiateChaincode = instantiateChaincode;
 
-
-function getcontext(channel) {
+/**
+* instantiate fabric-client object and register block events to interact with the channel
+* @channelConfig {Object}, see the 'channel' definition in fabric's configuration file
+* @return {Promise}, Promise.resolve({org{String}, client{Object}, channel{Object}, submitter{Object}, eventhubs{Array}});
+*/
+function getcontext(channelConfig) {
     Client.setConfigSetting('request-timeout', 60000);
-	var channel_name = channel.name;
-	var userOrg = channel.organizations[0];
+	var channel_name = channelConfig.name;
+	var userOrg = channelConfig.organizations[0];
     var client  = new Client();
 	var channel = client.newChannel(channel_name);
 	var orgName = ORGS[userOrg].name;
@@ -407,37 +411,56 @@ function getcontext(channel) {
 	}).then((admin) => {
 		the_user = admin;
 
-		// TODO: should ignore using fixed peer name
-		// set up the channel to use each org's 'peer1' for
+        // set up the channel to use each org's first for
 		// both requests and events
-		for (let key in ORGS) {
-			if (ORGS.hasOwnProperty(key) && typeof ORGS[key].peer1 !== 'undefined') {
-				let data = fs.readFileSync(path.join(__dirname, rootPath, ORGS[key].peer1['tls_cacerts']));
-				let peer = client.newPeer(
-					ORGS[key].peer1.requests,
-					{
-						pem: Buffer.from(data).toString(),
-						'ssl-target-name-override': ORGS[key].peer1['server-hostname']
-					}
-				);
-				channel.addPeer(peer);
-			}
+		for(let i in channelConfig.organizations) {
+		    let org = channelConfig.organizations[i];
+		    let good = false;
+		    if (ORGS.hasOwnProperty(org)) {
+		        for (let key in ORGS[org]) {
+		            let value = ORGS[org][key];
+		            if(key.indexOf('peer') === 0) {
+		                let data = fs.readFileSync(path.join(__dirname, rootPath, value['tls_cacerts']));
+                        let peer = client.newPeer(
+                            value.requests,
+                            {
+                                pem: Buffer.from(data).toString(),
+                                'ssl-target-name-override': value['server-hostname']
+                            }
+                        );
+                        channel.addPeer(peer);
+
+
+		                // an event listener can only register with a peer in its own org
+		                if(org === userOrg) {
+		                    let eh = client.newEventHub();
+                            eh.setPeerAddr(
+                                value.events,
+                                {
+                                    pem: Buffer.from(data).toString(),
+                                    'ssl-target-name-override': value['server-hostname'],
+                                    //'request-timeout': 60000
+                                    //'grpc.http2.keepalive_time' : 15
+                                }
+                            );
+                            eventhubs.push(eh);
+		                }
+
+		                good = true;
+                        break;
+		            }
+		        }
+		    }
+
+		    if(!good) {
+		        throw new Error('could not find peer of ' + org);
+		    }
 		}
 
-		// an event listener can only register with a peer in its own org
-		let data = fs.readFileSync(path.join(__dirname, rootPath, ORGS[userOrg].peer1['tls_cacerts']));
-		let eh = client.newEventHub();
-		eh.setPeerAddr(
-			ORGS[userOrg].peer1.events,
-			{
-				pem: Buffer.from(data).toString(),
-				'ssl-target-name-override': ORGS[userOrg].peer1['server-hostname'],
-				//'request-timeout': 60000
-				//'grpc.http2.keepalive_time' : 15
-			}
-		);
-		eh.connect();
-		eventhubs.push(eh);
+        // register event listener
+        eventhubs.forEach((eh) => {
+            eh.connect();
+        });
 
 		return channel.initialize();
 	})
@@ -487,7 +510,8 @@ function invokebycontext(context, id, version, args, timeout){
     };
     var pass_results = null;
 
-    // TODO: should check how to deal with the endorsement policy?
+    // TODO: should resolve endorsement policy to decides the target of endorsers
+    // now first peer of each organization is used as endorsers as default, see the implementation of getContext
 	// send proposal to endorser
 	var f = args[0];
 	args.shift();
