@@ -370,6 +370,20 @@ function buildChaincodeProposal(client, the_user, chaincode, upgrade, transientM
 
 module.exports.instantiateChaincode = instantiateChaincode;
 
+function getOrgPeers(orgName) {
+    var peers = [];
+    var org   = ORGS[orgName];
+    for (let key in org) {
+        if ( org.hasOwnProperty(key)) {
+            if (key.indexOf('peer') === 0) {
+                peers.push(org[key]);
+            }
+        }
+    }
+
+    return peers;
+}
+
 /**
 * instantiate fabric-client object and register block events to interact with the channel
 * @channelConfig {Object}, see the 'channel' definition in fabric's configuration file
@@ -378,7 +392,11 @@ module.exports.instantiateChaincode = instantiateChaincode;
 function getcontext(channelConfig) {
     Client.setConfigSetting('request-timeout', 60000);
 	var channel_name = channelConfig.name;
-	var userOrg = channelConfig.organizations[0];
+	// var userOrg = channelConfig.organizations[0];
+	// choose a random org to use, for load balancing
+	var idx     = Math.floor(Math.random() * channelConfig.organizations.length);
+	var userOrg = channelConfig.organizations[idx];
+
     var client  = new Client();
 	var channel = client.newChannel(channel_name);
 	var orgName = ORGS[userOrg].name;
@@ -411,49 +429,38 @@ function getcontext(channelConfig) {
 	}).then((admin) => {
 		the_user = admin;
 
-        // set up the channel to use each org's first for
+        // set up the channel to use each org's random peer for
 		// both requests and events
 		for(let i in channelConfig.organizations) {
-		    let org = channelConfig.organizations[i];
-		    let good = false;
-		    if (ORGS.hasOwnProperty(org)) {
-		        for (let key in ORGS[org]) {
-		            let value = ORGS[org][key];
-		            if(key.indexOf('peer') === 0) {
-		                let data = fs.readFileSync(path.join(__dirname, rootPath, value['tls_cacerts']));
-                        let peer = client.newPeer(
-                            value.requests,
+		    let org   = channelConfig.organizations[i];
+		    let peers = getOrgPeers(org);
+		    if(peers.length === 0) {
+		        throw new Error('could not find peer of ' + org);
+		    }
+		    let peerInfo = peers[Math.floor(Math.random() * peers.length)];
+		    let data = fs.readFileSync(path.join(__dirname, rootPath, peerInfo['tls_cacerts']));
+            let peer = client.newPeer(
+                            peerInfo.requests,
                             {
                                 pem: Buffer.from(data).toString(),
-                                'ssl-target-name-override': value['server-hostname']
+                                'ssl-target-name-override': peerInfo['server-hostname']
                             }
                         );
-                        channel.addPeer(peer);
+            channel.addPeer(peer);
 
-
-		                // an event listener can only register with a peer in its own org
-		                if(org === userOrg) {
-		                    let eh = client.newEventHub();
-                            eh.setPeerAddr(
-                                value.events,
-                                {
-                                    pem: Buffer.from(data).toString(),
-                                    'ssl-target-name-override': value['server-hostname'],
-                                    //'request-timeout': 60000
-                                    //'grpc.http2.keepalive_time' : 15
-                                }
-                            );
-                            eventhubs.push(eh);
-		                }
-
-		                good = true;
-                        break;
-		            }
-		        }
-		    }
-
-		    if(!good) {
-		        throw new Error('could not find peer of ' + org);
+		    // an event listener can only register with the peer in its own org
+		    if(org === userOrg) {
+		        let eh = client.newEventHub();
+                eh.setPeerAddr(
+                    peerInfo.events,
+                    {
+                        pem: Buffer.from(data).toString(),
+                        'ssl-target-name-override': peerInfo['server-hostname'],
+                        //'request-timeout': 60000
+                        //'grpc.http2.keepalive_time' : 15
+                    }
+                );
+                eventhubs.push(eh);
 		    }
 		}
 
@@ -511,7 +518,7 @@ function invokebycontext(context, id, version, args, timeout){
     var pass_results = null;
 
     // TODO: should resolve endorsement policy to decides the target of endorsers
-    // now first peer of each organization is used as endorsers as default, see the implementation of getContext
+    // now random peers ( one peer per organization ) are used as endorsers as default, see the implementation of getContext
 	// send proposal to endorser
 	var f = args[0];
 	args.shift();
@@ -536,8 +543,8 @@ function invokebycontext(context, id, version, args, timeout){
 			let proposal_response = proposalResponses[i];
 			if( proposal_response.response && proposal_response.response.status === 200) {
 			    // TODO: the CPU cost of verifying response is too high.
-			    // Now we ignore this step to improve concurrent capacity for node.js
-			    // so we can use a single node process to simulate multiple client to send concurrent transactions
+			    // Now we ignore this step to improve concurrent capacity for the client
+			    // so a client can initialize multiple concurrent transactions
 			    // Is it a reasonable way?
 				// one_good = channel.verifyProposalResponse(proposal_response);
 				one_good = true;

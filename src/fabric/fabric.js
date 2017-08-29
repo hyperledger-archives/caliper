@@ -69,20 +69,6 @@ var Fabric = class {
 
         return e2eUtils.getcontext(channel);
 
-        // find a random org as client's org
-        /*var ORGS = require(this.configPath).fabric.network;
-        var name = [];
-        for(let v in ORGS) {
-            if(v.indexOf('org') === 0) {
-                name[name.length] = v;
-            }
-        }
-        if(name.length === 0) {
-            return Promise.reject(new Error('Failed to find org in config file'));
-        }
-        var id = Math.floor(Math.random() * name.length);
-        return e2eUtils.getcontext(name[id]);*/
-
     }
 
     releaseContext(context) {
