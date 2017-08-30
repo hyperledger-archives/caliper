@@ -15,16 +15,12 @@ var impl_create      = require('./create-channel.js');
 var impl_join        = require('./join-channel.js');
 var impl_install     = require('./install-chaincode.js');
 var impl_instantiate = require('./instantiate-chaincode.js');
+var BlockchainInterface = require('../comm/blockchain-interface.js')
 
-var Fabric = class {
+class Fabric extends BlockchainInterface{
     constructor(config_path) {
-        this.configPath = config_path;
+        super(config_path);
     }
-
-    gettype() {
-        return 'fabric';
-    }
-
 
     init() {
         util.init(this.configPath);

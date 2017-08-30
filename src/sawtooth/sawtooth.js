@@ -9,9 +9,10 @@
 
 'use strict'
 
-class Sawtooth {
+var BlockchainInterface = require('../comm/blockchain-interface.js')
+class Sawtooth extends BlockchainInterface {
 	constructor(config_path) {
-		this._config_path = config_path;
+		 super(config_path);
 	}
 
 	gettype() {
@@ -24,7 +25,8 @@ class Sawtooth {
 	}
 
 	installSmartContract() {
-		// todo:        
+		// todo:
+		return Promise.resolve();
 	}
 
 	getContext(name) {
@@ -33,7 +35,8 @@ class Sawtooth {
 	}
 
 	releaseContext(context) {
-
+        // todo:
+		return Promise.resolve();
 	}
 
 	invokeSmartContract(context, contractID, contractVer, args, timeout) {
@@ -54,8 +57,8 @@ class Sawtooth {
 		return querybycontext(context, contractID, contractVer, queryName)
 	}
 
-	getDefaultTxStats(results) {
-
+	getDefaultTxStats(stats, results) {
+        // nothing to do now
 	}
 }
 
