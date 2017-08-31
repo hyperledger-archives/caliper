@@ -11,13 +11,14 @@
 
 /* global variables */
 var childProcess = require('child_process');
+var exec = childProcess.exec;
 var path = require('path');
 var tape = require('tape');
 var _test = require('tape-promise');
 var test = _test(tape);
 var table = require('table');
-var bc = require('../../src/comm/blockchain.js');
-var mn = require('../../src/comm/monitor.js');
+var Blockchain = require('../../src/comm/blockchain.js');
+var Monitor = require('../../src/comm/monitor.js');
 var blockchain;
 var monitor;
 var results = [];           // original output of recent test round
@@ -61,18 +62,37 @@ function putCache(data) {
     }
 }
 
-
 var configPath;
-
 /**
 * Start a default test flow to run the tests
 * @config_path {string},path of the local configuration file
 */
 module.exports.run = function(config_path) {
     configPath = config_path;
-    blockchain = new bc(config_path);
-    monitor = new mn(config_path);
-    blockchain.init()
+    blockchain = new Blockchain(config_path);
+    monitor = new Monitor(config_path);
+
+    var startPromise = new Promise((resolve, reject) => {
+        let config = require(config_path);
+        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('start')){
+            console.log(config.command.start);
+            let child = exec(config.command.start, (err, stdout, stderr) => {
+                if (err) {
+                    return reject(err);
+                }
+                return resolve();
+            });
+            child.stdout.pipe(process.stdout);
+            child.stderr.pipe(process.stderr);
+        }
+        else {
+            resolve();
+        }
+    });
+
+    startPromise.then(() => {
+        return blockchain.init();
+    })
     .then( () => {
         return blockchain.installSmartContract();
     })
@@ -101,6 +121,14 @@ module.exports.run = function(config_path) {
         printResultsByRound();
         monitor.printMaxStats();
         monitor.stop();
+
+        let config = require(config_path);
+        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
+            console.log(config.command.end);
+            let end = exec(config.command.end);
+            end.stdout.pipe(process.stdout);
+            end.stderr.pipe(process.stderr);
+        }
     })
     .catch( (err) => {
         console.log('unexpected error, ' + (err.stack ? err.stack : err));

@@ -3,6 +3,10 @@
     "type": "fabric",
     "config": "./fabric.json"
   },
+  "command" : {
+    "start": "docker-compose -f ../../network/fabric/simplenetwork/docker-compose.yaml up -d",
+    "end" : "docker-compose -f ../../network/fabric/simplenetwork/docker-compose.yaml down;docker rm $(docker ps -aq)"
+  },
   "test": {
     "clients": 5,
     "rounds": [{
