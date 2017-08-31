@@ -11,10 +11,11 @@
 'use strict'
 
 // todo: now we record the performance information in local variable, should use db later
-var MonitorDocker = class {
+
+var MonitorInterface = require('./monitor-interface');
+class MonitorDocker extends MonitorInterface {
     constructor(filter, interval) {
-        this.filter       = filter;
-        this.interval     = interval*1000; // ms
+        super(filter, interval);
         this.si           = require('systeminformation');
         this.Docker       = require('dockerode');
         this.containers   = [];     // {id, name, obj}
@@ -42,11 +43,6 @@ var MonitorDocker = class {
 
     }
 
-    /**
-    * start monitoring
-    * @isRestart {Boolean}, indicate whether it is restarting the monitor
-    * @return {Promise}
-    */
     start() {
         return this.hasContainters.then( () => {
             var self = this;
@@ -137,11 +133,7 @@ var MonitorDocker = class {
         return sleep(100);
     }
 
-    /**
-    * Get peer list and predefined readable information
-    * @return {Array}, {key, info={...}}
-    */
-    getBriefPeerInfo() {
+    getPeers() {
         var info = [];
         for(let i in this.containers) {
             let c = this.containers[i];
@@ -158,29 +150,14 @@ var MonitorDocker = class {
         return info;
     }
 
-    /**
-    * Get peer's history of memory usage, byte
-    * @key {string}, peer's key
-    * @return {Array}
-    */
     getMemHistory(key) {
         return this.stats[key].mem_usage;
     }
 
-    /**
-    * Get peer's history of cpu percent, %
-    * @key {string}, peer's key
-    * @return {Array}
-    */
     getCpuHistory(key) {
         return this.stats[key].cpu_percent;
     }
 
-    /**
-    * Get peer's history of network io usage, byte
-    * @key {string}, peer's key
-    * @return {Array}, [{in: inflow traffic, out: outflow traffic}]
-    */
     getNetworkHistory(key) {
         return {'in': this.stats[key].netIO_rx, 'out':this.stats[key].netIO_tx};
     }

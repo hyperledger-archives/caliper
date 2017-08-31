@@ -9,13 +9,13 @@
 
 'use strict'
 
-var dockerMonitor = require('./monitor-docker.js');
 var table         = require('table');
 
 var Monitor = class {
     constructor(config_path) {
         this.configPath = config_path;
         this.started = false;
+        this.peers = null;
     }
 
     /**
@@ -53,7 +53,8 @@ var Monitor = class {
                     interval = 1;
                 }
 
-                this.monitor = new dockerMonitor(filter, interval);
+                var DockerMonitor = require('./monitor-docker.js');
+                this.monitor = new DockerMonitor(filter, interval);
                 return this.monitor.start();
             }
 
@@ -83,6 +84,8 @@ var Monitor = class {
             .catch((err) => {
                 return Promise.reject(err);
             });
+
+            this.peers = null;
         }
 
         return Promise.resolve();
@@ -101,47 +104,126 @@ var Monitor = class {
     }
 
     /**
+    * read current statistics from monitor object and push the data into peers.history object
+    * the history data will not be cleared until stop() is called, in other words, calling restart will not vanish the data
+    */
+    readDefaultStats() {
+        if (this.peers === null) {
+            this.peers = this.monitor.getPeers();
+            this.peers.forEach((peer) => {
+                 peer['history'] = {
+                    'Memory(max)' : [],
+                    'Memory(avg)' : [],
+                    'CPU(max)' : [],
+                    'CPU(avg)' : [],
+                    'Traffic In'  : [],
+                    'Traffic Out' : []
+                };
+            });
+        }
+
+        this.peers.forEach((peer) => {
+            let key = peer.key;
+            let mem = this.monitor.getMemHistory(key);
+            let cpu = this.monitor.getCpuHistory(key);
+            let net = this.monitor.getNetworkHistory(key);
+            let mem_stat = getStatistics(mem);
+            let cpu_stat = getStatistics(cpu);
+            peer.history['Memory(max)'].push(mem_stat.max);
+            peer.history['Memory(avg)'].push(mem_stat.avg);
+            peer.history['CPU(max)'].push(cpu_stat.max);
+            peer.history['CPU(avg)'].push(cpu_stat.avg);
+            peer.history['Traffic In'].push(net.in[net.in.length-1] - net.in[0]);
+            peer.history['Traffic Out'].push(net.out[net.out.length-1] - net.out[0]);
+        });
+    }
+
+    /**
+    * get names of historical data
+    * @return {Array}
+    */
+    getHistoryItems() {
+        var items = [];
+        for(let key in this.peers[0].history) {
+            if(this.peers[0].history.hasOwnProperty(key)) {
+                items.push(key);
+            }
+        }
+        return items;
+    }
+
+
+
+    /**
+    * get the value of specific historical data
+    * @items {Array}, name of items
+    * @idx {Number}, peer index
+    * return {Array}, the normalized string values
+    */
+    getLastHistoryValues(items, idx) {
+        var values = [];
+        for(let i = 0 ; i < items.length ; i++) {
+            let key = items[i];
+            if (!this.peers[idx].history.hasOwnProperty(key)) {
+                console.log('could not find history object named ' + key);
+                values.push('-');
+                continue;
+            }
+            let length = this.peers[idx].history[key].length;
+            if(length === 0) {
+                console.log('could not find history data of ' + key);
+                values.push('-');
+                continue;
+            }
+            let value = this.peers[idx].history[key][length - 1];
+            if(key.indexOf('Memory') === 0 || key.indexOf('Traffic') === 0) {
+                values.push(byteNormalize(value));
+            }
+            else if(key.indexOf('CPU') === 0) {
+                values.push(value.toFixed(2) + '%');
+            }
+            else{
+                values.push(value.toString());
+            }
+        }
+
+        return values;
+    }
+
+    /**
     * print the default statistics
     */
     printDefaultStats() {
         try {
-            var peers = this.monitor.getBriefPeerInfo();   // [{'key': peer's key, 'info' : {peer's attributes}}]
-            if(peers.length === 0) {
-                throw new Error('could not get peers\' information')
-            }
+            this.readDefaultStats();
 
-            for(let i in peers) {
-                let key = peers[i].key;
-                let mem = this.monitor.getMemHistory(key);
-                let cpu = this.monitor.getCpuHistory(key);
-                let net = this.monitor.getNetworkHistory(key);
-                let mem_stat = getStatistics(mem);
-                let cpu_stat = getStatistics(cpu);
-
-                peers[i]['info']['Memory(max)'] = byteNormalize(mem_stat.max);
-                peers[i]['info']['Memory(avg)'] = byteNormalize(mem_stat.avg);
-                peers[i]['info']['CPU(max)'] = cpu_stat.max.toFixed(2) + '%';
-                peers[i]['info']['CPU(avg)'] = cpu_stat.avg.toFixed(2) + '%';
-                peers[i]['info']['Traffic In']  = byteNormalize(net.in[net.in.length-1] - net.in[0]);
-                peers[i]['info']['Traffic Out'] = byteNormalize(net.out[net.out.length-1] - net.out[0]);
+            if(this.peers === null || this.peers.length === 0) {
+                console.log('Failed to read monitoring data');
+                return;
             }
 
             var defaultTable = [];
             var tableHead    = [];
-            for(let i in peers[0].info) {
+            for(let i in this.peers[0].info) {
                 tableHead.push(i);
             }
+            var historyItems = this.getHistoryItems();
+            tableHead.push.apply(tableHead, historyItems);
+
             defaultTable.push(tableHead);
-            for(let i in peers){
+            for(let i in this.peers){
                 let row = [];
-                for(let j in peers[i].info) {
-                    row.push(peers[i].info[j]);
+                for(let j in this.peers[i].info) {
+                    row.push(strNormalize(this.peers[i].info[j]));
                 }
+
+                let historyValues = this.getLastHistoryValues(historyItems, i);
+                row.push.apply(row, historyValues);
                 defaultTable.push(row);
             }
 
             var t = table.table(defaultTable, {border: table.getBorderCharacters('ramac')});
-            console.log('###peers\' stats###');
+            console.log('### resource stats ###');
             console.log(t);
         }
         catch(err) {
@@ -198,4 +280,23 @@ function byteNormalize(data) {
     else{
         return (data / gb).toFixed(1) + 'GB';
     }
+}
+
+/**
+* Cut down the string in case it's too long
+* @data {string}
+* @return {string}
+*/
+function strNormalize(data) {
+    if(typeof data !== 'string' || data === null) {
+        return '-';
+    }
+
+    const maxLen = 30;
+    if(data.length <= maxLen) {
+        return data;
+    }
+
+    var newstr = data.slice(0,25) + '...' + data.slice(-5);
+    return newstr;
 }
