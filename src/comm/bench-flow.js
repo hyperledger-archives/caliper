@@ -97,7 +97,9 @@ module.exports.run = function(config_path) {
         }, Promise.resolve());
     })
     .then( () => {
+        console.log('----------finished test----------\n');
         printResultsByRound();
+        monitor.printMaxStats();
         monitor.stop();
     })
     .catch( (err) => {

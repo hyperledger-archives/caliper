@@ -16,6 +16,7 @@ var Monitor = class {
         this.configPath = config_path;
         this.started = false;
         this.peers = null;
+        this.statsupdated = false;
     }
 
     /**
@@ -64,6 +65,7 @@ var Monitor = class {
         })
         .then(() => {
             this.started = true;
+            this.statsupdated = false;
             return Promise.resolve();
         })
         .catch((err) => {
@@ -97,17 +99,108 @@ var Monitor = class {
     */
     restart() {
         if(typeof this.monitor !== 'undefined' && this.started === true){
+            this._readDefaultStats();
+            this.statsupdated = false;
             return this.monitor.restart();
         }
 
-        return Promise.resolve();
+        return start();
     }
+
+    /**
+    * print the default statistics
+    */
+    printDefaultStats() {
+        try {
+            this._readDefaultStats();
+
+            if(this.peers === null || this.peers.length === 0) {
+                console.log('Failed to read monitoring data');
+                return;
+            }
+
+            var defaultTable = [];
+            var tableHead    = [];
+            for(let i in this.peers[0].info) {
+                tableHead.push(i);
+            }
+            var historyItems = this._getDefaultItems();
+            tableHead.push.apply(tableHead, historyItems);
+
+            defaultTable.push(tableHead);
+            for(let i in this.peers){
+                let row = [];
+                for(let j in this.peers[i].info) {
+                    row.push(strNormalize(this.peers[i].info[j]));
+                }
+
+                let historyValues = this._getLastHistoryValues(historyItems, i);
+                row.push.apply(row, historyValues);
+                defaultTable.push(row);
+            }
+
+            var t = table.table(defaultTable, {border: table.getBorderCharacters('ramac')});
+            console.log('### resource stats ###');
+            console.log(t);
+        }
+        catch(err) {
+            console.log('Failed to read monitoring data, ' + (err.stack ? err.stack : err));
+        }
+    }
+
+    printMaxStats() {
+        try {
+            this._readDefaultStats();
+
+            if(this.peers === null || this.peers.length === 0) {
+                console.log('Failed to read monitoring data');
+                return;
+            }
+
+            var defaultTable = [];
+            var tableHead    = [];
+            for(let i in this.peers[0].info) {
+                tableHead.push(i);
+            }
+            var historyItems = this._getMaxItems();
+            tableHead.push.apply(tableHead, historyItems);
+
+            defaultTable.push(tableHead);
+            for(let i in this.peers){
+                let row = [];
+                for(let j in this.peers[i].info) {
+                    row.push(strNormalize(this.peers[i].info[j]));
+                }
+
+                let historyValues = this._getMaxHistoryValues(historyItems, i);
+                row.push.apply(row, historyValues);
+                defaultTable.push(row);
+            }
+
+            var t = table.table(defaultTable, {border: table.getBorderCharacters('ramac')});
+            console.log('### resource stats (maximum) ###');
+            console.log(t);
+        }
+        catch(err) {
+            console.log('Failed to read monitoring data, ' + (err.stack ? err.stack : err));
+        }
+    }
+
+    /**
+    * pseudo private functions
+    */
 
     /**
     * read current statistics from monitor object and push the data into peers.history object
     * the history data will not be cleared until stop() is called, in other words, calling restart will not vanish the data
     */
-    readDefaultStats() {
+    _readDefaultStats() {
+        if(this.statsupdated) {
+            return;
+        }
+
+        this.statsupdated = true;
+
         if (this.peers === null) {
             this.peers = this.monitor.getPeers();
             this.peers.forEach((peer) => {
@@ -139,10 +232,10 @@ var Monitor = class {
     }
 
     /**
-    * get names of historical data
+    * get names of default historical data
     * @return {Array}
     */
-    getHistoryItems() {
+    _getDefaultItems() {
         var items = [];
         for(let key in this.peers[0].history) {
             if(this.peers[0].history.hasOwnProperty(key)) {
@@ -152,15 +245,22 @@ var Monitor = class {
         return items;
     }
 
+    /**
+    * get names of maximum related historical data
+    * @return {Array}
+    */
+    _getMaxItems() {
+        return ['Memory(max)', 'CPU(max)', 'Traffic In','Traffic Out'];
+    }
 
 
     /**
-    * get the value of specific historical data
+    * get the last value of specific historical data
     * @items {Array}, name of items
     * @idx {Number}, peer index
     * return {Array}, the normalized string values
     */
-    getLastHistoryValues(items, idx) {
+    _getLastHistoryValues(items, idx) {
         var values = [];
         for(let i = 0 ; i < items.length ; i++) {
             let key = items[i];
@@ -190,45 +290,40 @@ var Monitor = class {
         return values;
     }
 
-    /**
-    * print the default statistics
+     /**
+    * get the maximum value of specific historical data
+    * @items {Array}, name of items
+    * @idx {Number}, peer index
+    * return {Array}, the normalized string values
     */
-    printDefaultStats() {
-        try {
-            this.readDefaultStats();
-
-            if(this.peers === null || this.peers.length === 0) {
-                console.log('Failed to read monitoring data');
-                return;
+    _getMaxHistoryValues(items, idx) {
+        var values = [];
+        for(let i = 0 ; i < items.length ; i++) {
+            let key = items[i];
+            if (!this.peers[idx].history.hasOwnProperty(key)) {
+                console.log('could not find history object named ' + key);
+                values.push('-');
+                continue;
             }
-
-            var defaultTable = [];
-            var tableHead    = [];
-            for(let i in this.peers[0].info) {
-                tableHead.push(i);
+            let length = this.peers[idx].history[key].length;
+            if(length === 0) {
+                console.log('could not find history data of ' + key);
+                values.push('-');
+                continue;
             }
-            var historyItems = this.getHistoryItems();
-            tableHead.push.apply(tableHead, historyItems);
-
-            defaultTable.push(tableHead);
-            for(let i in this.peers){
-                let row = [];
-                for(let j in this.peers[i].info) {
-                    row.push(strNormalize(this.peers[i].info[j]));
-                }
-
-                let historyValues = this.getLastHistoryValues(historyItems, i);
-                row.push.apply(row, historyValues);
-                defaultTable.push(row);
+            let stats = getStatistics(this.peers[idx].history[key]);
+            if(key.indexOf('Memory') === 0 || key.indexOf('Traffic') === 0) {
+                values.push(byteNormalize(stats.max));
             }
-
-            var t = table.table(defaultTable, {border: table.getBorderCharacters('ramac')});
-            console.log('### resource stats ###');
-            console.log(t);
+            else if(key.indexOf('CPU') === 0) {
+                values.push(stats.max.toFixed(2) + '%');
+            }
+            else{
+                values.push(stats.max.toString());
+            }
         }
-        catch(err) {
-            console.log('Failed to read monitoring data, ' + (err.stack ? err.stack : err));
-        }
+
+        return values;
     }
 }
 
