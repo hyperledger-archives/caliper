@@ -47,7 +47,7 @@ node simple.js
 ```
 
 Each benchmark test is provided along with some networks under test which are defined in [*caliper/network*](./network) folder.
-The network can be deployed automatically by adding the bootstrap command in *'command.start'* of the configuration, e.g
+The network can be deployed automatically by using *'command'* object in the configuration file to define the bootstrap commands, as well as the clear-up commands, e.g
 ```json
 {
   "command" : {
