@@ -33,6 +33,10 @@ Below is a configuration file example:
     "type": "fabric",
     "config": "./fabric.json"
   },
+  "command" : {
+    "start": "docker-compose -f ../../network/fabric/simplenetwork/docker-compose.yaml up -d",
+    "end" : "docker-compose -f ../../network/fabric/simplenetwork/docker-compose.yaml down;docker rm $(docker ps -aq)"
+  },
   "test": {
     "clients": 5,
     "rounds": [{
@@ -64,9 +68,12 @@ Below is a configuration file example:
   }
 }
 ```
-* **blockchain** - defines the type of backend blockchain system and the configuration file for the adaptor to prepare the test environment and interact with the backend blockchain system.
+* **blockchain** - defines the type of backend blockchain system and the configuration file for the adaptor to recognize the backend blockchain network with which to interact. See [*Farbic Config*](./Fabric%20Configuration.md) to learn more details.
+* **command** - defines commands which will be called at particular phases of the test
+  * **start** : be called at the beginning of the test
+  * **end** : be called when finishing all tests
 * **test** - defines the number of simulated clients to run the tests concurrently, as well as multiple test rounds, in each test round:
-  * **cmd** : command for test, this is only a hint for the test and also be used as the context name for *blockchain.getContext()*. 
+  * **cmd** : hint for the test, e.g name of the command for testing which is called by the smart contract. The value is also used as the context name for *blockchain.getContext()*. 
   * **txNumbAndTps** : defines an array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked at a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string `*#out` is used to declare an argument with output of previous test round (see the explanation of *out* argument).
   * **callback** : specifies the user defined module used in this test round. Please see [User defined test module](#user-defined-test-module) to learn more details.

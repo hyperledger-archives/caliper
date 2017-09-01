@@ -1,5 +1,5 @@
 ## Fabric Configuration
-The fabric configuration is json file which defines a fabric object with six main properties:
+The fabric configuration is a json file which defines a fabric object with six main properties:
 
 * **cryptodir**: defines a relative path of the crypto directory which contains all cryptographic materials, all paths defined in the configuration are relative paths to the fabric root directory. The crypto directory structure must be identical with the output of fabric's cryptogen tool. The sub-directories names must match organizations' names defined in *network* element. The certificates and private keys in this directory are used by Caliper to act as the administrator or the member of corresponding organization to interact with fabric network, e.g to create channel, join channel, install chaincode, invoke chaincode, etc.      
  
@@ -101,6 +101,10 @@ The fabric configuration is json file which defines a fabric object with six mai
   }
 }
 ```
+
+The diagram below shows the typical fabric test flow.
+![Fabric-flow](./fabric-flow.png)
+
 
 ## TODO List
 * network: allow to define mulitple orderers and implement load balancing for ordering proposals.
