@@ -36,7 +36,7 @@ Run `npm install` to install dependencies locally
   * Install **sawtooth-sdk** from the SDK, e.g run `npm install path-to-sdk/javascript` in capliper's root folder.
 
 
-## Run a existing test
+## Run an existing test
 
 All predefined benchmark tests can be found in [*caliper/benchmark*](./benchmark) folder. 
 To start a test, just run `node yourtest.js yourconfig.json` in the folder of the test. Usually, the bootstrap file has the same name as the test case. If configuration file is not specified, *config.json* will be used as default.
