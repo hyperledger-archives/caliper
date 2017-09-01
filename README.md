@@ -57,7 +57,7 @@ The network can be deployed automatically by using *'command'* object in the con
 }
 ```
 
-User's own existing blockchain network can ben also integerated with the test, as long as the network is properly configured in the configuration file. See [Confgituraion Introduction](./docs/Architecture.md#configuration-file) to learn more details.
+User's own existing blockchain network can also be integrated with the test, as long as the network is properly configured by the configuration file. See [Confgituraion Introduction](./docs/Architecture.md#configuration-file) to learn how to write the configuration.
 
 ## Write your own tests
 Caliper provides a set of nodejs NBIs (North Bound Interfaces) for applications to interact with backend blockchain system. Check the [*src/comm/blockchain.js*](./src/comm/blockchain.js) to learn about the NBIs. Multiple *Adaptors* are implemented to translate the NBIs to different blockchain protocols. So developers can write a test once, and run it with different blockchain systems.
