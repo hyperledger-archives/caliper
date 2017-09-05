@@ -129,61 +129,66 @@ var Blockchain = class {
         var minValid, maxValid, minCreate, maxCreate;
         var minDelay = 100000, maxDelay = 0;
         var throughput = {};
-        for(let i = 0 ; i < results.length ; i++) {
-            let stat   = results[i];
-            let create = stat['time_create'];
+		
+		if(results.length !== 0) {
+			for(let i = 0 ; i < results.length ; i++) {
+				let stat   = results[i];
+				let create = stat['time_create'];
 
-            if(typeof minCreate === 'undefined') {
-                minCreate = create;
-                maxCreate = create;
-            }
-            else {
-                if(create < minCreate) {
-                    minCreate = create;
-                }
-                if(create > maxCreate) {
-                    maxCreate = create;
-                }
-            }
+				if(typeof minCreate === 'undefined') {
+					minCreate = create;
+					maxCreate = create;
+				}
+				else {
+					if(create < minCreate) {
+						minCreate = create;
+					}
+					if(create > maxCreate) {
+						maxCreate = create;
+					}
+				}
 
-            if(stat.status === 'success') {
-                succ++;
-                let valid = stat['time_valid'];
-                let d     = valid - create;
-                if(typeof minValid === 'undefined') {
-                    minValid = valid;
-                    maxValid = valid;
-                }
-                else {
-                    if(valid < minValid) {
-                        minValid = valid;
-                    }
-                    if(valid > maxValid) {
-                        maxValid = valid;
-                    }
-                }
+				if(stat.status === 'success') {
+					succ++;
+					let valid = stat['time_valid'];
+					let d     = valid - create;
+					if(typeof minValid === 'undefined') {
+						minValid = valid;
+						maxValid = valid;
+					}
+					else {
+						if(valid < minValid) {
+							minValid = valid;
+						}
+						if(valid > maxValid) {
+							maxValid = valid;
+						}
+					}
 
-                delay += d;
-                if(d < minDelay) {
-                    minDelay = d;
-                }
-                if(d > maxDelay) {
-                    maxDelay = d;
-                }
+					delay += d;
+					if(d < minDelay) {
+						minDelay = d;
+					}
+					if(d > maxDelay) {
+						maxDelay = d;
+					}
 
-                let idx = Math.round(valid).toString();
-                if(typeof throughput[idx] === 'undefined') {
-                    throughput[idx] = 1;
-                }
-                else {
-                    throughput[idx] += 1;
-                }
-            }
-            else {
-                fail++;
-            }
-        }
-
+					let idx = Math.round(valid).toString();
+					if(typeof throughput[idx] === 'undefined') {
+						throughput[idx] = 1;
+					}
+					else {
+						throughput[idx] += 1;
+					}
+				}
+				else {
+					fail++;
+				}
+			}
+		}
+		else {
+				fail++;
+		}
         var stats = {
             'succ' : succ,
             'fail' : fail,
