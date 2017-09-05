@@ -7,7 +7,7 @@
 
 'use strict'
 
-module.exports.info  = "opening accounts";
+module.exports.info  = "querying accounts";
 
 
 var bc, contx;
