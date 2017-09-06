@@ -390,7 +390,7 @@ function getOrgPeers(orgName) {
 * @return {Promise}, Promise.resolve({org{String}, client{Object}, channel{Object}, submitter{Object}, eventhubs{Array}});
 */
 function getcontext(channelConfig) {
-    Client.setConfigSetting('request-timeout', 60000);
+    Client.setConfigSetting('request-timeout', 120000);
 	var channel_name = channelConfig.name;
 	// var userOrg = channelConfig.organizations[0];
 	// choose a random org to use, for load balancing
@@ -456,7 +456,7 @@ function getcontext(channelConfig) {
                     {
                         pem: Buffer.from(data).toString(),
                         'ssl-target-name-override': peerInfo['server-hostname'],
-                        //'request-timeout': 60000
+                        'request-timeout': 120000
                         //'grpc.http2.keepalive_time' : 15
                     }
                 );
@@ -627,13 +627,14 @@ function invokebycontext(context, id, version, args, timeout){
 	    // return resolved, so we can use promise.all to handle multiple invoking
 	    // invoke_status is used to judge the invoking result
 	    console.log('Invoke chaincode failed, ' + (err.stack?err.stack:err));
+	    invoke_status.time_valid = process.uptime();
+	    invoke_status.status     = 'failed';
 	    return Promise.resolve(invoke_status);
 	});
 };
 module.exports.invokebycontext = invokebycontext;
 
 function querybycontext(context, id, version, name) {
-	Client.setConfigSetting('request-timeout', 60000);
 	var userOrg = context.org;
     var client  = context.client;
     var channel = context.channel;
@@ -660,6 +661,9 @@ function querybycontext(context, id, version, name) {
 	.then((responses) => {
 	    if(responses.length > 0) {
 	        var value = responses[0];
+	        if(value instanceof Error) {
+	            throw value;
+	        }
 	        for(let i = 1 ; i < responses.length ; i++) {
 	            if(responses[i].length !== value.length || !responses[i].every(function(v,idx){
 	                return v === value[idx];
@@ -679,7 +683,9 @@ function querybycontext(context, id, version, name) {
 	})
 	.catch((err) => {
 	    console.log('Query failed, ' + (err.stack?err.stack:err));
-	    Promise.resolve(invoke_status);
+	    invoke_status.time_valid = process.uptime();
+	    invoke_status.status     = 'failed';
+	    return Promise.resolve(invoke_status);
 	});
 };
 
