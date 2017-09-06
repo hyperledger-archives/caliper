@@ -367,7 +367,8 @@ function printTable(value) {
 * @return {Array}, result table's title
 */
 function getResultTitle() {
-    return ['OPT', 'Succ', 'Fail', 'Send Rate', 'Max Delay', 'Min Delay', 'Avg Delay', 'Max Throughput', 'Min Throughput', 'Avg Throughput'];
+    // return ['OPT', 'Succ', 'Fail', 'Send Rate', 'Max Delay', 'Min Delay', 'Avg Delay', 'Max Throughput', 'Min Throughput', 'Avg Throughput'];
+    return ['Name', 'Succ', 'Fail', 'Send Rate', 'Max Delay', 'Min Delay', 'Avg Delay', 'Throughput'];
 }
 
 /**
@@ -396,8 +397,8 @@ function getResultValue(r) {
     row.push(r.delay.max.toFixed(2) + ' s');
     row.push(r.delay.min.toFixed(2) + ' s');
     row.push((r.delay.sum / r.succ).toFixed(2) + ' s');
-    row.push(max.toString() + ' tps');
-    row.push(min.toString() + ' tps');
+//    row.push(max.toString() + ' tps');
+//    row.push(min.toString() + ' tps');
     (r.valid.max === r.valid.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.valid.max - r.valid.min)).toFixed(0)) + ' tps');
     return row;
 }
