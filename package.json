@@ -13,6 +13,8 @@
   "engineStrict": true,
   "dependencies": {
     "dockerode": "^2.5.0",
+    "pidusage": "^1.1.6",
+    "ps-node": "^0.1.6",
     "request": "^2.81.0",
     "request-promise": "^4.2.1",
     "systeminformation": "^3.23.7",

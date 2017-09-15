@@ -42,8 +42,11 @@ class MonitorInterface{
 
     /**
     * Get peer list and predefined readable information
-    * @return {Array}, [{'key': peer's key which should be identical,
-    *                    'info' :  {key/values for any readable information}}]
+    * @return {Array}, [{'key': peer's key which should be identical, the key can be used to fetch a peer's history data
+    *                'info' : {
+    *                    'TYPE' : type of the peer, e.g. 'Docker',
+    *                    'NAME' : readable name of the peer
+    *                }
     */
     getPeers() {
         throw new Error('getPeers is not implemented for this monitor');

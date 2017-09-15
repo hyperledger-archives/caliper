@@ -15,8 +15,8 @@ var Monitor = class {
     constructor(config_path) {
         this.configPath = config_path;
         this.started = false;
-        this.peers = null;
-        this.statsupdated = false;
+        this.peers = [];
+        this.monitors = [];
     }
 
     /**
@@ -30,42 +30,51 @@ var Monitor = class {
             return Promise.reject(new Error('Failed to find monitor in config file'));
         }
 
-        var type = m.type;
+        var monitorTypes = m.type;
         if(typeof m === 'undefined') {
             return Promise.reject(new Error('Failed to find monitor type in config file'));
+        }
+        if(!Array.isArray(monitorTypes)) {
+            monitorTypes = [monitorTypes];
         }
 
         var p;
         if(this.started === true) {
-            p = stop();
+            p = this.stop();
         }
         else {
             p = Promise.resolve();
         }
 
         return p.then(() => {
-            if(type === 'docker') {     // monitor for local docker containers
-                var filter = m.docker;
-                if(typeof filter === 'undefined') {
-                    filter = {'name': ["all"]};
-                }
-                var interval = m.interval;
-                if(typeof interval === 'undefined') {
-                    interval = 1;
-                }
-
-                var DockerMonitor = require('./monitor-docker.js');
-                this.monitor = new DockerMonitor(filter, interval);
-                return this.monitor.start();
-            }
-
-            // TODO: other environments' monitor, e.g. k8s,aws,...
-
-            return Promise.reject(new Error('undefined monitor type: ' + type));
+            var promises = [];
+            monitorTypes.forEach( (type) => {
+                promises.push(new Promise((resolve, reject) => {
+                    let p = null;
+                    if(type === 'docker') {     // monitor for local docker containers
+                        p = this._startDockerMonitor(m.docker, m.interval);
+                    }
+                    else if(type === 'process') {
+                        p = this._startProcessMonitor(m.process, m.interval);
+                    }
+                    else {
+                        console.log('undefined monitor type: ' + type);
+                        return resolve();
+                    }
+                    p.then((monitor)=>{
+                        this.monitors.push(monitor);
+                        resolve();
+                    })
+                    .catch((err)=>{
+                        console.log('start monitor ' + type + ' failed: ' + err);
+                        resolve();  // always return resolve for Promsie.all
+                    });
+                }));
+            });
+            return Promise.all(promises);
         })
         .then(() => {
             this.started = true;
-            this.statsupdated = false;
             return Promise.resolve();
         })
         .catch((err) => {
@@ -78,16 +87,32 @@ var Monitor = class {
     * @return {Promise}
     */
     stop() {
-        if(typeof this.monitor !== 'undefined' && this.started === true) {
-            return this.monitor.stop().then(() => {
-                this.started = false;
+        if( this.monitors.length > 0 && this.started === true) {
+            var promises = [];
+            this.monitors.forEach((monitor)=>{
+                promises.push(new Promise((resolve, reject) => {
+                    monitor.stop().then(() => {
+                        resolve();
+                    })
+                    .catch((err) => {
+                        console.log('stop monitor failed: ' + err);
+                        resolve();
+                    });
+                }));
+            });
+            return Promise.all(promises).then(()=>{
+                this.monitors = [];
+                this.peers = [];
+                this.started  = false;
                 return Promise.resolve();
             })
-            .catch((err) => {
-                return Promise.reject(err);
+            .catch((err)=>{
+                console.log('stop monitor failed: ' + err);
+                this.monitors = [];
+                this.peers = [];
+                this.started  = false;
+                return Promise.resolve();
             });
-
-            this.peers = null;
         }
 
         return Promise.resolve();
@@ -98,10 +123,21 @@ var Monitor = class {
     * @return {Promise}
     */
     restart() {
-        if(typeof this.monitor !== 'undefined' && this.started === true){
-            this._readDefaultStats();
-            this.statsupdated = false;
-            return this.monitor.restart();
+        if(this.monitors.length > 0 && this.started === true){
+            this._readDefaultStats(false);
+            var promises = [];
+            this.monitors.forEach((monitor)=>{
+                promises.push(new Promise((resolve, reject) => {
+                    monitor.restart().then(() => {
+                        resolve();
+                    })
+                    .catch((err) => {
+                        console.log('restart monitor failed: ' + err);
+                        resolve();
+                    });
+                }));
+            });
+            return Promise.all(promises);
         }
 
         return start();
@@ -112,7 +148,7 @@ var Monitor = class {
     */
     printDefaultStats() {
         try {
-            this._readDefaultStats();
+            this._readDefaultStats(true);
 
             if(this.peers === null || this.peers.length === 0) {
                 console.log('Failed to read monitoring data');
@@ -150,7 +186,7 @@ var Monitor = class {
 
     printMaxStats() {
         try {
-            this._readDefaultStats();
+            this._readDefaultStats(true);
 
             if(this.peers === null || this.peers.length === 0) {
                 console.log('Failed to read monitoring data');
@@ -193,41 +229,54 @@ var Monitor = class {
     /**
     * read current statistics from monitor object and push the data into peers.history object
     * the history data will not be cleared until stop() is called, in other words, calling restart will not vanish the data
+    * @tmp {boolean}, =true, the data should only be stored in history temporarily
     */
-    _readDefaultStats() {
-        if(this.statsupdated) {
-            return;
-        }
-
-        this.statsupdated = true;
-
-        if (this.peers === null) {
-            this.peers = this.monitor.getPeers();
-            this.peers.forEach((peer) => {
-                 peer['history'] = {
-                    'Memory(max)' : [],
-                    'Memory(avg)' : [],
-                    'CPU(max)' : [],
-                    'CPU(avg)' : [],
-                    'Traffic In'  : [],
-                    'Traffic Out' : []
-                };
-            });
+    _readDefaultStats(tmp) {
+        if (this.peers.length === 0) {
+            for(let i = 0 ; i < this.monitors.length ; i++)
+            {
+                let newPeers = this.monitors[i].getPeers();
+                newPeers.forEach((peer) => {
+                     peer['history'] = {
+                        'Memory(max)' : [],
+                        'Memory(avg)' : [],
+                        'CPU(max)' : [],
+                        'CPU(avg)' : [],
+                        'Traffic In'  : [],
+                        'Traffic Out' : []
+                    };
+                    peer['isLastTmp'] = false;
+                    peer['monitor'] = this.monitors[i];
+                    this.peers.push(peer);
+                });
+            }
         }
 
         this.peers.forEach((peer) => {
             let key = peer.key;
-            let mem = this.monitor.getMemHistory(key);
-            let cpu = this.monitor.getCpuHistory(key);
-            let net = this.monitor.getNetworkHistory(key);
+            let mem = peer.monitor.getMemHistory(key);
+            let cpu = peer.monitor.getCpuHistory(key);
+            let net = peer.monitor.getNetworkHistory(key);
             let mem_stat = getStatistics(mem);
             let cpu_stat = getStatistics(cpu);
-            peer.history['Memory(max)'].push(mem_stat.max);
-            peer.history['Memory(avg)'].push(mem_stat.avg);
-            peer.history['CPU(max)'].push(cpu_stat.max);
-            peer.history['CPU(avg)'].push(cpu_stat.avg);
-            peer.history['Traffic In'].push(net.in[net.in.length-1] - net.in[0]);
-            peer.history['Traffic Out'].push(net.out[net.out.length-1] - net.out[0]);
+            if(peer.isLastTmp) {
+                let lastIdx = peer.history['Memory(max)'].length - 1;
+                peer.history['Memory(max)'][lastIdx] = mem_stat.max;
+                peer.history['Memory(avg)'][lastIdx] = mem_stat.avg;
+                peer.history['CPU(max)'][lastIdx] = cpu_stat.max;
+                peer.history['CPU(avg)'][lastIdx] = cpu_stat.avg;
+                peer.history['Traffic In'][lastIdx] = net.in[net.in.length-1] - net.in[0];
+                peer.history['Traffic Out'][lastIdx] = net.out[net.out.length-1] - net.out[0];
+            }
+            else {
+                peer.history['Memory(max)'].push(mem_stat.max);
+                peer.history['Memory(avg)'].push(mem_stat.avg);
+                peer.history['CPU(max)'].push(cpu_stat.max);
+                peer.history['CPU(avg)'].push(cpu_stat.avg);
+                peer.history['Traffic In'].push(net.in[net.in.length-1] - net.in[0]);
+                peer.history['Traffic Out'].push(net.out[net.out.length-1] - net.out[0]);
+            }
+            peer.isLastTmp = tmp;
         });
     }
 
@@ -325,6 +374,35 @@ var Monitor = class {
 
         return values;
     }
+
+    _startDockerMonitor(args, interval) {
+        if(typeof args === 'undefined') {
+            args = {'name': ["all"]};
+        }
+        if(typeof interval === 'undefined') {
+            interval = 1;
+        }
+
+        var DockerMonitor = require('./monitor-docker.js');
+        var monitor = new DockerMonitor(args, interval);
+        return monitor.start().then(()=>{
+            return Promise.resolve(monitor);
+        })
+        .catch((err)=>{
+            return Promise.reject(err);
+        });
+    }
+
+    _startProcessMonitor(args, interval) {
+        var ProcessMonitor = require('./monitor-process.js');
+        var monitor = new ProcessMonitor(args, interval);
+        return monitor.start().then(()=>{
+            return Promise.resolve(monitor);
+        })
+        .catch((err)=>{
+            return Promise.reject(err);
+        });
+    }
 }
 
 module.exports = Monitor;
@@ -360,6 +438,9 @@ function getStatistics(arr) {
 * @return {string}
 */
 function byteNormalize(data) {
+    if(isNaN(data)) {
+        return '-';
+    }
     var kb = 1024;
     var mb = kb * 1024;
     var gb = mb * 1024;

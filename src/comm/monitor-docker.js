@@ -141,7 +141,7 @@ class MonitorDocker extends MonitorInterface {
                 info.push({
                     'key'  : c.id,
                     'info' : {
-                        'ID' : c.id,
+                        'TYPE' : 'Docker',
                         'NAME' : c.name
                     }
                 });
