@@ -30,10 +30,17 @@
       }]
   },
   "monitor": {
-    "type": "docker",
+    "type": ["docker", "proccess"],
     "docker":{
       "name": ["all"]
     },
+    "proccess": [
+      {
+        "command" : "node",
+        "arguments" : "bench-client.js",
+        "multiOutput" : "avg"
+      }
+    ],
     "interval": 1
   }
 }
