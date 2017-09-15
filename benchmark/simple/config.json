@@ -39,9 +39,6 @@
         "command" : "node",
         "arguments" : "bench-client.js",
         "multiOutput" : "avg"
-      },
-      {
-        "command" : "localhost"
       }
     ],
     "interval": 1
