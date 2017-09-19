@@ -36,19 +36,19 @@ Run `npm install` to install dependencies locally
   * Install **sawtooth-sdk** from the SDK, e.g run `npm install path-to-sdk/javascript` in capliper's root folder.
 
 
-## Run an existing test
+## Run an existing benchmark
 
-All predefined benchmark tests can be found in [*caliper/benchmark*](./benchmark) folder. 
-To start a test, just run `node main.js -c yourconfig.json -n yournetwork.json` in the folder of the test. 
+All predefined benchmarks can be found in [*caliper/benchmark*](./benchmark) folder. 
+To start a benchmark, just run `node main.js -c yourconfig.json -n yournetwork.json` in the folder of the benchmark. 
 * -c : specify the config file of the benchmark, if not used,  *config.json* will be used as default.
 * -n : specify the config file of the blockchain network under test. If not used, the file address must be specified in the benchmak config file.
 ```bash
-# start the simple test case, default config.json is used
+# start the simple benchmark, default config.json is used
 cd ~/caliper/benchmark/simple
 node main.js
 ```
 
-Each benchmark test is provided along with some networks under test which are defined in [*caliper/network*](./network) folder.
+Each benchmark is provided along with some networks under test which are defined in [*caliper/network*](./network) folder.
 The network can be deployed automatically by using *'command'* object in the configuration file to define the bootstrap commands, as well as the clear-up commands, e.g
 ```json
 {
@@ -59,20 +59,45 @@ The network can be deployed automatically by using *'command'* object in the con
 }
 ```
 
-User's own existing blockchain network can also be integrated with the test, as long as the network is properly configured by the configuration file. See [Confgituraion Introduction](./docs/Architecture.md#configuration-file) to learn how to write the configuration.
+User's own existing blockchain network can also be integrated with the benchmark, as long as the network is properly configured by the configuration file. See [Confgituraion Introduction](./docs/Architecture.md#configuration-file) to learn how to write the configuration.
 
-## Write your own tests
-Caliper provides a set of nodejs NBIs (North Bound Interfaces) for applications to interact with backend blockchain system. Check the [*src/comm/blockchain.js*](./src/comm/blockchain.js) to learn about the NBIs. Multiple *Adaptors* are implemented to translate the NBIs to different blockchain protocols. So developers can write a test once, and run it with different blockchain systems.
+**Alternative:**
+You can also use npm scriptes to run a benchmark:
+* npm run list: list all available benchmarks
+```bash
+$ npm run list
 
-Generally speaking, to write a new caliper test, you need to:
+> caliper@0.1.0 list /home/hurf/caliper
+> node ./scripts/list.js
+
+Available benchmarks:
+drm
+simple
+```
+
+* npm test benchmark [options]: run a benchmark with specific config files
+```bash
+$ npm test -- simple -c ./benchmark/simple/config.json -n ./benchmark/simple/fabric.json
+
+> caliper@0.1.0 test /home/hurf/caliper
+> node ./scripts/test.js "simple" "-c" "./benchmark/simple/config.json" "-n" "./benchmark/simple/fabric.json"
+......
+```
+
+
+
+## Write your own benchmarks
+Caliper provides a set of nodejs NBIs (North Bound Interfaces) for applications to interact with backend blockchain system. Check the [*src/comm/blockchain.js*](./src/comm/blockchain.js) to learn about the NBIs. Multiple *Adaptors* are implemented to translate the NBIs to different blockchain protocols. So developers can write a benchmark once, and run it with different blockchain systems.
+
+Generally speaking, to write a new caliper benchmark, you need to:
 * Write smart contracts for systems you want to test
-* Write a test flow using caliper NBIs. Caliper provides a default test framework, which is plugable and configurable to integrate new tests easily. For more details, please refer to [Test Framework](./docs/Architecture.md#test-framework) .
-* Write a configuration file to define the backend network and test arguments.
+* Write a testing flow using caliper NBIs. Caliper provides a default test framework, which is plugable and configurable to integrate new tests easily. For more details, please refer to [Test Framework](./docs/Architecture.md#test-framework) .
+* Write a configuration file to define the backend network and benchmark arguments.
 
 ## Directory Structure
 **Directory** | **Description**
 ------------------ | --------------
-/benchmark | Samples of the blockchain test cases
+/benchmark | Samples of the blockchain benchmarks
 /docs | Documents
 /network | Boot configuration files used to deploy some predefined blockchain network for test.
 /src | Souce code of the framework
