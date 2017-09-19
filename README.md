@@ -62,7 +62,7 @@ The network can be deployed automatically by using *'command'* object in the con
 User's own existing blockchain network can also be integrated with the benchmark, as long as the network is properly configured by the configuration file. See [Confgituraion Introduction](./docs/Architecture.md#configuration-file) to learn how to write the configuration.
 
 **Alternative:**
-You can also use npm scriptes to run a benchmark:
+You can also use npm scriptes to run a benchmark.
 * npm run list: list all available benchmarks
 ```bash
 $ npm run list
@@ -75,7 +75,7 @@ drm
 simple
 ```
 
-* npm test benchmark [options]: run a benchmark with specific config files
+* npm test: run a benchmark with specific config files
 ```bash
 $ npm test -- simple -c ./benchmark/simple/config.json -n ./benchmark/simple/fabric.json
 
@@ -99,7 +99,7 @@ Generally speaking, to write a new caliper benchmark, you need to:
 ------------------ | --------------
 /benchmark | Samples of the blockchain benchmarks
 /docs | Documents
-/network | Boot configuration files used to deploy some predefined blockchain network for test.
+/network | Boot configuration files used to deploy some predefined blockchain network under test.
 /src | Souce code of the framework
 /src/contract | Smart contracts for different blockchain systems
   
