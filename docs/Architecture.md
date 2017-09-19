@@ -60,10 +60,17 @@ Below is a configuration file example:
       }]
   },
   "monitor": {
-    "type": "docker",
+    "type": ["docker", "process"],
     "docker":{
       "name": ["peer0.org1.example.com", "http://192.168.1.100:2375/orderer.example.com"]
     },
+    "process": [
+      {
+        "command" : "node",
+        "arguments" : "bench-client.js",
+        "multiOutput" : "avg"
+      }
+    ],
     "interval": 1
   }
 }
@@ -78,8 +85,9 @@ Below is a configuration file example:
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string `*#out` is used to declare an argument with output of previous test round (see the explanation of *out* argument).
   * **callback** : specifies the user defined module used in this test round. Please see [User defined test module](#user-defined-test-module) to learn more details.
   * **out** : name of the output of this test rounds. If existed, the output of the user defined module will be cached for later use. If multiple sub-rounds are defined, those outputs will be concatenated as a single output.
-* **monitor** - defines the type of resource monitor and monitored objects, as well as the time interval for the monitoring.
+* **monitor** - defines the type of resource monitors and monitored objects, as well as the time interval for the monitoring.
   * docker : a docker monitor is used to monitor specified docker containers on local or remote hosts. Docker Remote API is used to retrieve remote container's stats. Reserved container name 'all' means all containers on the host will be watched. In above example, the monitor will retrieve the stats of two containers per second, one is a local container named 'peer0.org1.example.com' and another is a remote container named 'orderer.example.com' located on host '192.168.1.100', 2375 is the listening port of Docker on that host.
+  * process : a process monitor is used to monitor specified local process. For example, users can use this monitor to watch the resource consumption of simulated blockchain clients. The 'command' and 'arguments' properties are used to specify the processes. The 'multiOutput' property is used to define the meaning of the output if multiple processes are found. 'avg' means the output is the average resource consumption of those processes, while 'sum' means the output is the summing consumption.  
   * others : to be implemented.
 
 ### Master Process
