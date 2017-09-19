@@ -39,11 +39,13 @@ Run `npm install` to install dependencies locally
 ## Run an existing test
 
 All predefined benchmark tests can be found in [*caliper/benchmark*](./benchmark) folder. 
-To start a test, just run `node yourtest.js yourconfig.json` in the folder of the test. Usually, the bootstrap file has the same name as the test case. If configuration file is not specified, *config.json* will be used as default.
+To start a test, just run `node main.js -c yourconfig.json -n yournetwork.json` in the folder of the test. 
+* -c : specify the config file of the benchmark, if not used,  *config.json* will be used as default.
+* -n : specify the config file of the blockchain network under test. If not used, the file address must be specified in the benchmak config file.
 ```bash
 # start the simple test case, default config.json is used
 cd ~/caliper/benchmark/simple
-node simple.js
+node main.js
 ```
 
 Each benchmark test is provided along with some networks under test which are defined in [*caliper/network*](./network) folder.
@@ -51,8 +53,8 @@ The network can be deployed automatically by using *'command'* object in the con
 ```json
 {
   "command" : {
-    "start": "docker-compose -f ../../network/fabric/simplenetwork/docker-compose.yaml up -d",
-    "end" : "docker-compose -f ../../network/fabric/simplenetwork/docker-compose.yaml down;docker rm $(docker ps -aq)"
+    "start": "docker-compose -f network/fabric/simplenetwork/docker-compose.yaml up -d",
+    "end" : "docker-compose -f network/fabric/simplenetwork/docker-compose.yaml down;docker rm $(docker ps -aq)"
   }
 }
 ```

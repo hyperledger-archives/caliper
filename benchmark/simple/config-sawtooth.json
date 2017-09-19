@@ -1,7 +1,7 @@
 {
    "blockchain": {
     "type": "sawtooth",
-    "config": "./sawtooth.json"
+    "config": "benchmark/simple/sawtooth.json"
   },
   "test": {
     "clients": 1,

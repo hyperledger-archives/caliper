@@ -12,6 +12,7 @@
   "engine-strict": true,
   "engineStrict": true,
   "dependencies": {
+    "commander": "^2.11.0",
     "dockerode": "^2.5.0",
     "pidusage": "^1.1.6",
     "ps-node": "^0.1.6",
