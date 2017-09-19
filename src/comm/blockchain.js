@@ -11,19 +11,20 @@
 var path = require('path');
 var Blockchain = class {
     constructor(configPath) {
-        var args = require(configPath).blockchain;
-        this.bcType = args.type;
-        this.bcObj = null;
-        if(this.bcType === 'fabric') {
+        var config = require(configPath);
+
+        if(config.hasOwnProperty('fabric')) {
             var fabric = require('../fabric/fabric.js');
-            this.bcObj = new fabric(path.join(path.dirname(configPath), args.config));
+            this.bcType = 'fabric';
+            this.bcObj = new fabric(configPath);
         }
-        else if(this.bcType === 'sawtooth') {
+        else if(config.hasOwnProperty('sawtooth')) {
             var sawtooth = require('../sawtooth/sawtooth.js')
-            this.bcObj = new sawtooth(path.join(path.dirname(configPath), args.config));
+            this.bcType = 'sawtooth';
+            this.bcObj = new sawtooth(configPath);
         }
         else {
-            throw new Error('Unknown blockchain type, ' + this.bcType);
+            throw new Error('Unknown blockchain config file ' + configPath);
         }
     }
 

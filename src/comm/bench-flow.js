@@ -62,21 +62,23 @@ function putCache(data) {
     }
 }
 
-var configPath;
+var absConfigFile, absNetworkFile;
+var absCaliperDir = path.join(__dirname, '../..');
 /**
 * Start a default test flow to run the tests
 * @config_path {string},path of the local configuration file
 */
-module.exports.run = function(config_path) {
-    configPath = config_path;
-    blockchain = new Blockchain(config_path);
-    monitor = new Monitor(config_path);
+module.exports.run = function(configFile, networkFile) {
+    absConfigFile  = configFile;
+    absNetworkFile = networkFile;
+    blockchain = new Blockchain(absNetworkFile);
+    monitor = new Monitor(absConfigFile);
 
     var startPromise = new Promise((resolve, reject) => {
-        let config = require(config_path);
+        let config = require(absConfigFile);
         if (config.hasOwnProperty('command') && config.command.hasOwnProperty('start')){
             console.log(config.command.start);
-            let child = exec(config.command.start, (err, stdout, stderr) => {
+            let child = exec(config.command.start, {cwd: absCaliperDir}, (err, stdout, stderr) => {
                 if (err) {
                     return reject(err);
                 }
@@ -105,8 +107,8 @@ module.exports.run = function(config_path) {
             console.log('could not start monitor, ' + (err.stack ? err.stack : err));
         });
 
-        var allTests  = require(config_path).test.rounds;
-        var clientNum = require(config_path).test.clients;
+        var allTests  = require(absConfigFile).test.rounds;
+        var clientNum = require(absConfigFile).test.clients;
         var testIdx   = 0;
         var testNum   = allTests.length;
         return allTests.reduce( (prev, item) => {
@@ -122,10 +124,10 @@ module.exports.run = function(config_path) {
         monitor.printMaxStats();
         monitor.stop();
 
-        let config = require(config_path);
+        let config = require(absConfigFile);
         if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
             console.log(config.command.end);
-            let end = exec(config.command.end);
+            let end = exec(config.command.end, {cwd: absCaliperDir});
             end.stdout.pipe(process.stdout);
             end.stderr.pipe(process.stderr);
         }
@@ -165,7 +167,7 @@ function defaultTest(args, clientNum, final) {
                               tps:  tpsPerClient,
                               args: args.arguments,
                               cb  : args.callback,
-                              config: configPath
+                              config: absNetworkFile
                            };
                 for( let key in args.arguments) {
                     if(args.arguments[key] === "*#out") { // from previous cached data
@@ -234,7 +236,7 @@ function defaultTest(args, clientNum, final) {
 */
 function loadProcess(msg, t) {
     return new Promise( function(resolve, reject) {
-        var child = childProcess.fork('../../src/comm/bench-client.js');
+        var child = childProcess.fork(path.join(absCaliperDir, './src/comm/bench-client.js'));
         child.on('message', function(message) {
             if(message.cmd === 'result') {
                 results.push(message.data);
