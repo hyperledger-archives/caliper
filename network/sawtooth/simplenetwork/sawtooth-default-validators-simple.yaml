@@ -18,7 +18,7 @@ version: "2.1"
 services:
 
   settings-tp:
-    image: sawtooth-settings-tp:latest
+    image: hyperledger/sawtooth-tp_settings:latest
     container_name: sawtooth-settings-tp-default
     expose:
       - 4004
@@ -26,14 +26,23 @@ services:
       - validator
     entrypoint: settings-tp -vv tcp://validator:4004
 
-  simple-tp-python:
-    image: sawtooth-simple-tp-python:latest
-    container_name: sawtooth-simple-tp-python-default
+  intkey-tp-python:
+    image: hyperledger/sawtooth-tp_intkey_python:latest
+    container_name: sawtooth-intkey-tp-python-default
     expose:
       - 4004
     depends_on:
       - validator
-    entrypoint: simple-tp-python -vv tcp://validator:4004
+    entrypoint: intkey-tp-python -vv tcp://validator:4004
+
+  xo-tp-python:
+    image: hyperledger/sawtooth-tp_xo_python:latest
+    container_name: sawtooth-xo-tp-python-default
+    expose:
+      - 4004
+    depends_on:
+      - validator
+    entrypoint: xo-tp-python -vv tcp://validator:4004
 
   validator:
     image: hyperledger/sawtooth-validator:latest
@@ -44,8 +53,8 @@ services:
       - "4004:4004"
     # start the validator with an empty genesis batch
     entrypoint: "bash -c \"\
-        sawtooth admin keygen && \
-        sawtooth keygen my_key && \
+        sawtooth admin keygen --force && \
+        sawtooth keygen my_key --force && \
         sawtooth config genesis -k /root/.sawtooth/keys/my_key.priv && \
         sawtooth admin genesis config-genesis.batch && \
         sawtooth-validator -vv \
@@ -53,7 +62,6 @@ services:
           --bind component:tcp://eth0:4004 \
           --bind network:tcp://eth0:8800 \
         \""
-
 
   validator-1:
     image: hyperledger/sawtooth-validator:latest
@@ -99,7 +107,7 @@ services:
     stop_signal: SIGKILL
 
   rest-api:
-    image: sawtooth-rest-api:latest
+    image: hyperledger/sawtooth-rest_api:latest
     container_name: sawtooth-rest-api-default
     expose:
       - 4004
