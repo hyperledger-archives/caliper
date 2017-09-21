@@ -53,6 +53,10 @@ function run(config_path) {
 
             return channels.reduce((prev, channel)=>{
                 return prev.then(()=>{
+                    if(channel.deployed) {
+                        return Promise.resolve();
+                    }
+
                     t.comment('create ' + channel.name + '......');
 
                     // Acting as a client in first org when creating the channel

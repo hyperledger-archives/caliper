@@ -65,6 +65,10 @@ module.exports.run = function (config_path) {
 
             return channels.reduce((prev, channel)=>{
                 return prev.then(() => {
+                    if(channel.deployed) {
+                        return Promise.resolve();
+                    }
+
                     t.comment('join ' + channel.name);
                     let promises = [];
                     channel.organizations.forEach((org, index) => {

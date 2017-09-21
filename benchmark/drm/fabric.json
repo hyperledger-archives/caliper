@@ -55,6 +55,7 @@
     "channel": [
       {
         "name": "mychannel",
+        "deployed": false,
         "config": "network/fabric/simplenetwork/mychannel.tx",
         "organizations": ["org1", "org2"]
       }
