@@ -43,12 +43,13 @@ The fabric configuration is a json file which defines a fabric object with six m
 }
 ```    
 
-* **channel**: defines one or more channels used for the test. The defined channels can be created automatically by calling *Blockchain.init()* function. The binary tx file created by fabric configtxgen tool is used to provide details of the channel. 
+* **channel**: defines one or more channels used for the test. The 'deployed' property is used to define whether the channel has already been deployed (false as default when the property is missing). If the value if false, the defined channels can be created automatically by calling *Blockchain.init()* function. The binary tx file created by fabric configtxgen tool is used to provide details of the channel. 
 ```json
 {
   "channel": [
     {
       "name": "mychannel",
+      "deployed": false,
       "config": "network/fabric/simplenetwork/mychannel.tx",
       "organizations": ["org1", "org2"]
     }
@@ -108,5 +109,5 @@ The diagram below shows the typical fabric test flow.
 
 ## TODO List
 * network: allow to define mulitple orderers and implement load balancing for ordering proposals.
-* channel: allow to define row information of the channel directly as alternative option, instead of the tx file. Also an indicator may be needed to tell Caliper not to recreate the channel in case it has already been created outside. 
+* channel: allow to define row information of the channel directly as alternative option, instead of the tx file.  
 * endorsement-policy: allow to define multiple policies and relation between policy and chaincode.
