@@ -8,6 +8,8 @@
     "end" : "docker-compose -f network/fabric/simplenetwork/docker-compose.yaml down;docker rm $(docker ps -aq)"
   },
   "test": {
+    "name": "drm",
+    "description" : "Benchmark for DRM scenario",
     "clients": 1,
     "rounds": [
       {

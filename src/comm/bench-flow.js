@@ -17,10 +17,10 @@ var tape = require('tape');
 var _test = require('tape-promise');
 var test = _test(tape);
 var table = require('table');
-var Blockchain = require('../../src/comm/blockchain.js');
-var Monitor = require('../../src/comm/monitor.js');
-var blockchain;
-var monitor;
+var Blockchain = require('./blockchain.js');
+var Monitor = require('./monitor.js');
+var Report =  require('./report.js');
+var blockchain, monitor, report;
 var results = [];           // original output of recent test round
 var resultsbyround = [];    // processed output of each test round
 var round = 0;              // test round
@@ -73,7 +73,7 @@ module.exports.run = function(configFile, networkFile) {
     absNetworkFile = networkFile;
     blockchain = new Blockchain(absNetworkFile);
     monitor = new Monitor(absConfigFile);
-
+    createReport();
     var startPromise = new Promise((resolve, reject) => {
         let config = require(absConfigFile);
         if (config.hasOwnProperty('command') && config.command.hasOwnProperty('start')){
@@ -123,6 +123,14 @@ module.exports.run = function(configFile, networkFile) {
         printResultsByRound();
         monitor.printMaxStats();
         monitor.stop();
+        let date = new Date().toISOString().replace(/-/g,'').replace(/:/g,'').substr(0,15);
+        let output = path.join(process.cwd(), 'report'+date+'.html' );
+        return report.generate(output).then(()=>{
+            console.log('Generated report at ' + output);
+            return Promise.resolve();
+        });
+    })
+    .then( () => {
 
         let config = require(absConfigFile);
         if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
@@ -134,7 +142,46 @@ module.exports.run = function(configFile, networkFile) {
     })
     .catch( (err) => {
         console.log('unexpected error, ' + (err.stack ? err.stack : err));
+        let config = require(absConfigFile);
+        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
+            console.log(config.command.end);
+            let end = exec(config.command.end, {cwd: absCaliperDir});
+            end.stdout.pipe(process.stdout);
+            end.stderr.pipe(process.stderr);
+        }
     });
+}
+
+function createReport() {
+    var config = require(absConfigFile);
+    report  = new Report();
+    report.addMetadata('DLT', blockchain.gettype());
+    try{
+        report.addMetadata('Benchmark', config.test.name);
+    }
+    catch(err) {
+        report.addMetadata('Benchmark', ' ');
+    }
+    try{
+        report.addMetadata('Description', config.test.description);
+    }
+    catch(err) {
+        report.addMetadata('Description', ' ');
+    }
+    try{
+        var r = 0;
+        for(let i = 0 ; i < config.test.rounds.length ; i++) {
+            if(config.test.rounds[i].hasOwnProperty('txNumbAndTps')) {
+                r += config.test.rounds[i].txNumbAndTps.length;
+            }
+        }
+        report.addMetadata('Test Rounds', r);
+
+        report.setBenchmarkInfo(JSON.stringify(config.test, null, 2))
+    }
+    catch(err) {
+        report.addMetadata('Test Rounds', ' ');
+    }
 }
 
 /**
@@ -195,7 +242,6 @@ function defaultTest(args, clientNum, final) {
                     .then( () => {
                         t.pass('passed \'' + testCmd + '\' testing');
                         processResult(testCmd, t);
-                        monitor.printDefaultStats();
                         return Promise.resolve();
                     })
                     .then( () => {
@@ -277,82 +323,95 @@ function loadProcess(msg, t) {
 */
 // TODO: should be moved to a dependent 'analyser' module in which to do all result analysing work
 function processResult(opt, t){
-    if(results.length === 0) {
-        t.fail('empty result');
-        return;
+    try{
+        if(results.length === 0) {
+            t.fail('empty result');
+            return;
+        }
+
+        var r = results[0];
+        putCache(r.out);
+
+        for(let i = 1 ; i < results.length ; i++) {
+            let v = results[i];
+            putCache(v.out);
+            r.succ += v.succ;
+            r.fail += v.fail;
+            if(v.create.min < r.create.min) {
+                r.create.min = v.create.min;
+            }
+            if(v.create.max > r.create.max) {
+                r.create.max = v.create.max;
+            }
+            if(v.valid.min < r.valid.min) {
+                r.valid.min = v.valid.min;
+            }
+            if(v.valid.max > r.valid.max) {
+                r.valid.max = v.valid.max;
+            }
+            if(v.delay.min < r.delay.min) {
+                r.delay.min = v.delay.min;
+            }
+            if(v.delay.max > r.delay.max) {
+                r.delay.max = v.delay.max;
+            }
+            r.delay.sum += v.delay.sum;
+            for(let j in v.throughput) {
+                if(typeof r.throughput[j] === 'undefined') {
+                    r.throughput[j] = v.throughput[j];
+                }
+                else {
+                    r.throughput[j] += v.throughput[j];
+                }
+            }
+
+            if(blockchain.gettype() === 'fabric' && r.hasOwnProperty('delayC2E')) {
+                if(v.delayC2E.min < r.delayC2E.min) {
+                    r.delayC2E.min = v.delayC2E.min;
+                }
+                if(v.delayC2E.max > r.delayC2E.max) {
+                    r.delayC2E.max = v.delayC2E.max;
+                }
+                r.delayC2E.sum += v.delayC2E.sum;
+
+                if(v.delayE2O.min < r.delayE2O.min) {
+                    r.delayE2O.min = v.delayE2O.min;
+                }
+                if(v.delayE2O.max > r.delayE2O.max) {
+                    r.delayE2O.max = v.delayE2O.max;
+                }
+                r.delayE2O.sum += v.delayE2O.sum;
+
+                if(v.delayO2V.min < r.delayO2V.min) {
+                    r.delayO2V.min = v.delayO2V.min;
+                }
+                if(v.delayO2V.max > r.delayO2V.max) {
+                    r.delayO2V.max = v.delayO2V.max;
+                }
+                r.delayO2V.sum += v.delayO2V.sum;
+            }
+        }
+        r['opt'] = opt;
+
+        resultsbyround.push(r);
+
+        var resultTable = [];
+        resultTable[0] = getResultTitle();
+        resultTable[1] = getResultValue(r);
+        console.log('###test result:###');
+        printTable(resultTable);
+        var idx = report.addBenchmarkRound(opt);
+        report.setRoundPerformance(idx, resultTable);
+        var resourceTable = monitor.getDefaultStats();
+        if(resourceTable.length > 0) {
+            console.log('### resource stats ###');
+            printTable(resourceTable);
+            report.setRoundResource(idx, resourceTable);
+        }
     }
-
-    var r = results[0];
-    putCache(r.out);
-
-    for(let i = 1 ; i < results.length ; i++) {
-        let v = results[i];
-        putCache(v.out);
-        r.succ += v.succ;
-        r.fail += v.fail;
-        if(v.create.min < r.create.min) {
-            r.create.min = v.create.min;
-        }
-        if(v.create.max > r.create.max) {
-            r.create.max = v.create.max;
-        }
-        if(v.valid.min < r.valid.min) {
-            r.valid.min = v.valid.min;
-        }
-        if(v.valid.max > r.valid.max) {
-            r.valid.max = v.valid.max;
-        }
-        if(v.delay.min < r.delay.min) {
-            r.delay.min = v.delay.min;
-        }
-        if(v.delay.max > r.delay.max) {
-            r.delay.max = v.delay.max;
-        }
-        r.delay.sum += v.delay.sum;
-        for(let j in v.throughput) {
-            if(typeof r.throughput[j] === 'undefined') {
-                r.throughput[j] = v.throughput[j];
-            }
-            else {
-                r.throughput[j] += v.throughput[j];
-            }
-        }
-
-        if(blockchain.gettype() === 'fabric' && r.hasOwnProperty('delayC2E')) {
-            if(v.delayC2E.min < r.delayC2E.min) {
-                r.delayC2E.min = v.delayC2E.min;
-            }
-            if(v.delayC2E.max > r.delayC2E.max) {
-                r.delayC2E.max = v.delayC2E.max;
-            }
-            r.delayC2E.sum += v.delayC2E.sum;
-
-            if(v.delayE2O.min < r.delayE2O.min) {
-                r.delayE2O.min = v.delayE2O.min;
-            }
-            if(v.delayE2O.max > r.delayE2O.max) {
-                r.delayE2O.max = v.delayE2O.max;
-            }
-            r.delayE2O.sum += v.delayE2O.sum;
-
-            if(v.delayO2V.min < r.delayO2V.min) {
-                r.delayO2V.min = v.delayO2V.min;
-            }
-            if(v.delayO2V.max > r.delayO2V.max) {
-                r.delayO2V.max = v.delayO2V.max;
-            }
-            r.delayO2V.sum += v.delayO2V.sum;
-        }
+    catch(err) {
+        console.log(err);
     }
-    r['opt'] = opt;
-
-    resultsbyround.push(r);
-
-    var resultTable = [];
-    resultTable[0] = getResultTitle();
-    resultTable[1] = getResultValue(r);
-    console.log('###test result:###');
-    printTable(resultTable);
 }
 
 /**
@@ -421,6 +480,8 @@ function printResultsByRound() {
     }
     console.log('###all test results:###');
     printTable(resultTable);
+
+    report.setSummaryTable(resultTable);
 }
 
 function sleep(ms) {

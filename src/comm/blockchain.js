@@ -24,6 +24,7 @@ var Blockchain = class {
             this.bcObj = new sawtooth(configPath);
         }
         else {
+            this.bcType = 'unknown';
             throw new Error('Unknown blockchain config file ' + configPath);
         }
     }

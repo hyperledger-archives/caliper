@@ -8,6 +8,8 @@
     "end" : "docker-compose -f network/fabric/simplenetwork/docker-compose.yaml down;docker rm $(docker ps -aq)"
   },
   "test": {
+    "name": "simple",
+    "description" : "This is an example benchmark for caliper, to test the backend DLT's performance with simple account opening & querying transactions",
     "clients": 5,
     "rounds": [{
         "cmd" : "open",
