@@ -145,8 +145,9 @@ var Monitor = class {
 
     /**
     * print the default statistics
+    * @return {Array}, statistics table
     */
-    printDefaultStats() {
+    getDefaultStats() {
         try {
             this._readDefaultStats(true);
 
@@ -175,12 +176,14 @@ var Monitor = class {
                 defaultTable.push(row);
             }
 
-            var t = table.table(defaultTable, {border: table.getBorderCharacters('ramac')});
+            return defaultTable;
+/*            var t = table.table(defaultTable, {border: table.getBorderCharacters('ramac')});
             console.log('### resource stats ###');
-            console.log(t);
+            console.log(t);*/
         }
         catch(err) {
             console.log('Failed to read monitoring data, ' + (err.stack ? err.stack : err));
+            return [];
         }
     }
 
