@@ -38,6 +38,8 @@ Below is a configuration file example:
     "end" : "docker-compose -f ../../network/fabric/simplenetwork/docker-compose.yaml down;docker rm $(docker ps -aq)"
   },
   "test": {
+    "name": "simple",
+    "description" : "This is an example benchmark for caliper",
     "clients": 5,
     "rounds": [{
         "cmd" : "open",
@@ -80,6 +82,7 @@ Below is a configuration file example:
   * **start** : be called at the beginning of the test
   * **end** : be called when finishing all tests
 * **test** - defines the number of simulated clients to run the tests concurrently, as well as multiple test rounds, in each test round:
+  * **name&description** : human readable name and description of the benchmark, the value is used by the report generator to show in the testing report.
   * **cmd** : hint for the test, e.g name of the command for testing which is called by the smart contract. The value is also used as the context name for *blockchain.getContext()*. 
   * **txNumbAndTps** : defines an array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked at a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string `*#out` is used to declare an argument with output of previous test round (see the explanation of *out* argument).
