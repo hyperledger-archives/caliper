@@ -61,6 +61,8 @@ The network can be deployed automatically by using *'command'* object in the con
 
 User's own existing blockchain network can also be integrated with the benchmark, as long as the network is properly configured by the configuration file. See [Confgituraion Introduction](./docs/Architecture.md#configuration-file) to learn how to write the configuration.
 
+A HTML report will be generated automatically after the testing.
+
 **Alternative:**
 You can also use npm scriptes to run a benchmark.
 * npm run list: list all available benchmarks
