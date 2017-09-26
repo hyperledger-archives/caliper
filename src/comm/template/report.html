@@ -105,6 +105,13 @@
             <li><a href="#{{id}}">{{id}}</a></li>
             {{/rounds}}
         </ul>
+        <ul>
+            <h3>&nbspSystem Under Test</h3>
+            {{#sut.meta}}
+            <li><strong>{{name}}: &nbsp</strong><span>{{value}}</span></li>
+            {{/sut.meta}}
+            <li><a href="#sutdetails">Details</a></li>
+        </ul>
     </div>
 
     <div class="right-column">
@@ -157,6 +164,8 @@
             <h3>Test Environment</h3>
             <strong class="tag">benchmark config</strong>
             <pre id="benchmarkInfo">{{benchmarkInfo}}</pre>
+            <strong class="tag">SUT</strong>
+            <pre id="sutdetails">{{sut.details}}</pre>
         </div>
     </div>
 

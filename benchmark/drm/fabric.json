@@ -88,5 +88,11 @@
       "publish": "mychannel",
       "query": "mychannel"
     }
+  },
+  "info" : {
+    "Version": "1.0.0",
+    "Size": "4 Peers",
+    "Orderer": "Solo",
+    "Distribution": "Single Host"
   }
 }
