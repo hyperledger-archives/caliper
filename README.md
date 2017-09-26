@@ -63,8 +63,9 @@ User's own existing blockchain network can also be integrated with the benchmark
 
 A HTML report will be generated automatically after the testing.
 
-**Alternative:**
-You can also use npm scriptes to run a benchmark.
+**Alternative**
+
+You can also use npm scripts to run a benchmark.
 * npm run list: list all available benchmarks
 ```bash
 $ npm run list
