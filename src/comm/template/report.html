@@ -4,12 +4,8 @@
     <title>Caliper Report</title>
     <meta charset="UTF-8"/>
     <style type="text/css">
-        .column {
-            float:left;
-            background: #fff;
-            margin: 1%
-        }
         .left-column {
+            position: fixed;
             width:20%;
             border-radius: 5px;
             background-color: #f2f2f2;
@@ -18,16 +14,17 @@
             -khtml-border-radius: 5px;
         }
         .right-column {
+            margin-left: 22%;
             width:60%;
         }
-        .bottom-line {
-            border-bottom: 1px solid #d9d9d9;
-        }
-        .left-column ul{
+        .left-column ul,h2 {
             display: block;
             margin: 10px;
             padding: 0;
             list-style: none;
+        }
+        .left-column ul{
+            border-top: 1px solid #d9d9d9;
         }
         .left-column li{
             margin-bottom: 5px;
@@ -92,11 +89,9 @@
 <body>
 
 <main>
-    <div class="column left-column">
-        <ul class="bottom-line">
-            <h2>Caliper</h2>
-        </ul>
-        <ul class="bottom-line">
+    <div class="left-column">
+        <h2>Caliper</h2>
+        <ul>
             <h3>&nbspBasic information</h3>
             {{#summary.meta}}
             <li><strong>{{name}}: &nbsp</strong><span>{{value}}</span></li>
@@ -112,7 +107,7 @@
         </ul>
     </div>
 
-    <div class="column right-column">
+    <div class="right-column">
         <div id="benchmarksummary">
             {{#summary}}
             <table>
