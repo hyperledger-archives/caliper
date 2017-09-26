@@ -182,6 +182,13 @@ function createReport() {
     catch(err) {
         report.addMetadata('Test Rounds', ' ');
     }
+
+    var sut = require(absNetworkFile);
+    if(sut.hasOwnProperty('info')) {
+        for(let key in sut.info) {
+            report.addSUTInfo(key, sut.info[key]);
+        }
+    }
 }
 
 /**

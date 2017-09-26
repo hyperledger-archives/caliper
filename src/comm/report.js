@@ -39,7 +39,11 @@ var Report = class {
                                              //       ]
                                              //     }
                                              //   },
-                        "benchmarkInfo": "unprovided"   // readable information for the benchmark
+                        "benchmarkInfo": "not provided",   // readable information for the benchmark
+                        "sut": {
+                            "meta" : [],                    // metadata of the SUT
+                            "details" : "not provided"     // details of the SUT
+                        }
                      };
         this.started = false;
         this.peers = [];
@@ -158,6 +162,20 @@ var Report = class {
     }
 
     /**
+    * add SUT information
+    * @name {String}
+    * @value {any}
+    */
+    addSUTInfo(name, value) {
+        if(name === 'details') {
+            this.data.sut.details = stringify(value);
+        }
+        else {
+            this.data.sut.meta.push({'name': name, 'value': stringify(value)});
+        }
+    }
+
+    /**
     * generate a HTML report for the benchmark
     * @output {String}, filename of the output
     * @return {Promise}
@@ -177,8 +195,20 @@ var Report = class {
             });
       });
     }
-
 }
 
-
 module.exports = Report;
+
+function stringify(value) {
+    if(typeof value === 'Object'){
+        if(Array.isArray(value)) {
+            return value.toString();
+        }
+        else {
+            return JSON.stringify(value, null, 2);
+        }
+    }
+    else {
+        return value;
+    }
+}
