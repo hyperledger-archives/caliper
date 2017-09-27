@@ -106,6 +106,21 @@ The fabric configuration is a json file which defines a fabric object with six m
 The diagram below shows the typical fabric test flow.
 ![Fabric-flow](./fabric-flow.png)
 
+###Info Property
+The configuration file may contain an 'info' property which is a common property for all blockchain configuration files. Users can use this property to disclose any information about the system under test (SUT). Caliper's report generator will read this property and add the information into the generated testing report. This property may contain any user defined key/value pairs. A special key named 'details', is reserved particularly to contain detailed information about the SUT.
+```json
+{
+  "info": {
+    "Version": "1.0.0",
+    "Size": "4 Peers",
+    "Orderer": "Solo",
+    "Distribution": "Single Host",
+    "details": "not provided"
+  }
+}
+```
+
+
 
 ## TODO List
 * network: allow to define mulitple orderers and implement load balancing for ordering proposals.

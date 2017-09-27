@@ -5,24 +5,25 @@
 
 The adaptation layer is used to integrate existing blockchain system into Caliper framework. Each adaptor implements the 'Caliper Blockchain NBIs' by using corresponding blockchain's native SDK or RESTful API. Hyperledger Fabric1.0 and Sawtooth are current supported now, while Ethereum and other blockchain systems are in the plan.
 
-### Interface Layer
+### Interface&Core Layer
 
-The interface layer provides north bound interfaces for up-applications. Three kinds of NBIs are provided:
-* *Blockchain operating interfaces* contains operations such as deploying smart contracts on backend blockchain, invoking contracts, querying states from the ledger, etc.
-* *Resource monitoring interfaces* contains operations to start/stop a monitor and fetch resource consumption status of backend blockchain system, including CPU, memory, network IO, etc. Now only a simple monitor for local docker containers is implemented. More monitors will be implemented in future.
-* *Performance measuring interfaces* contains operations to read predefined performance statistics, including TPS, delay, success ratio, etc. Key metrics are recorded while invoking blockchain NBIs, e.g. created time and committed time of the transaction, result of the transaction, etc. Those metrics are used later to generate the statistics.
+The interface&Core layer implements core functions and provides north bound interfaces for up-applications. Four kinds of NBIs are provided:
+* *Blockchain operating interfaces:* contains operations such as deploying smart contracts on backend blockchain, invoking contracts, querying states from the ledger, etc.
+* *Resource Monitor:* contains operations to start/stop a monitor and fetch resource consumption status of backend blockchain system, including CPU, memory, network IO, etc. Two kinds of monitors are provided now, one is to watch local/remote docker container, and another is to watch local processes. More monitors will be implemented in the future.
+* *Performance Analyzer:* contains operations to read predefined performance statistics (including TPS, delay, success ratio, etc) and print benchmark results. Key metrics are recorded while invoking blockchain NBIs, e.g. created time and committed time of the transaction, result of the transaction, etc. Those metrics are used later to generate the statistics.
+* *Report Generator:* contains operations to generate a HTML format testing report
    
 ### Application Layer
 
 The application layer contains the tests implemented for typical blockchain scenarios. Each test has a configuration file which defines the backend blockchain network and test arguments. These tests can be used directly to test the performance of the blockchain system.
 
-A default test framework is implemented to help developers to understand the framework and implement their own test quickly. How to use the test framework is explained in the latter part. Of course, developers can use NBIs directly to implement their test without the framework.
+A default benchmark engine is implemented to help developers to understand the framework and implement their own test quickly. How to use the benchmark engine is explained in the latter part. Of course, developers can use NBIs directly to implement their test without the framework.
 
 
-## Test Framework
+## Benchmark Engine
 
 
-![Test Framework](test-framework.png)
+![Benchmark Engine](test-framework.png)
 
 ### Configuration File
  
@@ -103,7 +104,7 @@ The final stage is 'finishing' stage. Performance statistics is generated in thi
 
 ### Child Process
 
-Nodejs is single-threaded by nature. The default test framework uses cluster to do the actual testing tasks to improve throughput on multi-core machines. The total workload are divided and assigned equally to child processes. A child process acts as a blockchain client with a temporarily generated context to interact with the backend blockchain system. The context usually contains the client's identity and cryptographic materials, and will be released after all the testing tasks are finished.
+Nodejs is single-threaded by nature. The default benchmark engine uses cluster to do the actual testing tasks to improve throughput on multi-core machines. The total workload are divided and assigned equally to child processes. A child process acts as a blockchain client with a temporarily generated context to interact with the backend blockchain system. The context usually contains the client's identity and cryptographic materials, and will be released after all the testing tasks are finished.
 
 For Hyperledger Fabric, the context is bound to a specific channel, the relationship is defined in fabric configuration file. 
   
