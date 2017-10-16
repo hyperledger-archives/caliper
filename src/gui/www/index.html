@@ -98,10 +98,10 @@
 
 <script src="echart/js/echarts.js"></script>
 <script type="text/javascript">
-    var sut = "fabric";
+    var sut = "fabric.json";
     var running = false;
     var bench = "simple";
-    var logMonitor, chartMonitor;
+    var logMonitor = null, chartMonitor = null;
     var pageHtmlJson  = null;
     var charts = {
         throughput : {
@@ -125,12 +125,12 @@
         var eleType = document.getElementById("suttype");
         var eleSize = document.getElementById("sutsize");
         if(value === "fabric") {
-            sut = value;
+            sut = "fabric.json";
             eleType.innerHTML = "Fabric v1.0.0";
             eleSize.innerHTML = "4 Peers, 1 Orderer(solo)";
         }
         if(value === "stl") {
-            sut = value;
+            sut = "sawtooth.json";
             eleType.innerHTML = "Sawtooth v0.8.0";
             eleSize.innerHTML = "4 Validators";
         }
@@ -160,6 +160,9 @@
     }
 
     function startLogMonitor(){
+        if(logMonitor != null) {
+            stopLogMonitor();
+        }
         logMonitor = setInterval(function(){
             var xmlhttp = new XMLHttpRequest();
             loadXMLDoc(xmlhttp, "readlog.php", function(){
@@ -174,6 +177,7 @@
 
     function stopLogMonitor() {
         clearInterval(logMonitor);
+        logMonitor = null;
     }
 
 
@@ -280,6 +284,9 @@
             }
             chartInited = true;
         }
+        if(chartMonitor != null) {
+             clearInterval(chartMonitor);
+        }
         chartMonitor = setInterval(function(){
             refreshData();
         }, 1000);
@@ -287,6 +294,7 @@
 
     function stopChartMonitor() {
         clearInterval(chartMonitor);
+        chartMonitor = null;
         chartInited = false;
     }
 
@@ -320,7 +328,7 @@
                 changeRunningStatus(true);
                 setTimeout( function () {
                     var xmlhttp = new XMLHttpRequest();
-                    loadXMLDoc(xmlhttp, "remotecontrol.php?b="+bench, function(){
+                    loadXMLDoc(xmlhttp, "remotecontrol.php?b="+bench+"&s="+sut, function(){
                         if(xmlhttp.readyState == 4) {
                             changeRunningStatus(false);
 
