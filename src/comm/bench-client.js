@@ -18,25 +18,58 @@ var bc    = require('../../src/comm/blockchain.js');
 /**
  * Message handler
  */
-process.on('message', function(msg) {
-    function messageHandle(message) {
-        if(typeof message.cmd !=='undefined' && typeof message.cb !== 'undefined') {
-            return doTest(message);
+process.on('message', function(message) {
+    if(message.hasOwnProperty('type')) {
+        try {
+            var result;
+            switch(message.type) {
+                case 'queryNewTx':
+                    queryNewTxInfo()
+                    .then((queryResult) => {
+                         process.send({type: 'queryResult', session: message.session, data: queryResult});
+                    });
+                    break;
+                case 'test':
+                    doTest(message)
+                    .then((testResult) => {
+                        result = testResult;
+                        return queryNewTxInfo();
+                    })
+                    .then((queryResult) => {
+                         process.send({type: 'queryResult', session: 'final', data: queryResult});
+                         return sleep(200);
+                    })
+                    .then(() => {
+                         process.send({type: 'testResult', data: result});
+                    });
+                    break;
+                default:
+                    process.send({type: 'error', data: 'unknown message type'});
+            }
         }
-        throw new Error('Unknown message');
+        catch(err) {
+            process.send({type: 'error', data: err});
+        };
     }
-
-    messageHandle(msg)
-    .then( (result) => {
-        process.send({cmd: 'result', data: result});
-    })
-    .catch( (err) => {
-        process.send({cmd: 'error', data: err});
-    });
+    else {
+         process.send({cmd: 'error', data: 'message type was missed'});
+    }
 })
 
+var blockchain;
+var results = [];
+var txNum   = 0;
+function queryNewTxInfo() {
+    var tmpArray = results.slice();
+    var tmpNum   = txNum;
+    results = [];
+    txNum   = 0;
+    var stats = blockchain.getDefaultTxStats(tmpArray);
+    return Promise.resolve({submitted: tmpNum, committed:stats});
+}
+
 function doTest(msg) {
-    var blockchain = new bc(msg.config);
+    blockchain = new bc(msg.config);
     var cb = require(path.join(__dirname, '../../', msg.cb));
     var bcContext;
     var bcResults;
@@ -54,7 +87,11 @@ function doTest(msg) {
 
         return rounds.reduce(function(prev, item) {
             return prev.then( () => {
-                promises.push(cb.run());
+                txNum++;        // TODO: fix, wrong number if run() creates multiple transactions
+                promises.push(cb.run().then((result)=>{
+                    results.push(result);
+                    return Promise.resolve(result);
+                }));
                 idx++;
                 return rateControl(sleepTime, start, idx);
             });
