@@ -26,6 +26,9 @@ var resultsbyround = [];    // processed output of each test round
 var round = 0;              // test round
 var cache = {};             // memory cache to store defined output from child process, so different test case could exchange data if needed
                             // this should only be used to exchange small amount of data
+var demo = require('../gui/src/demo.js')
+var absConfigFile, absNetworkFile;
+var absCaliperDir = path.join(__dirname, '../..');
 
 /**
 * Read cached data by key name
@@ -62,8 +65,6 @@ function putCache(data) {
     }
 }
 
-var absConfigFile, absNetworkFile;
-var absCaliperDir = path.join(__dirname, '../..');
 /**
 * Start a default test flow to run the tests
 * @config_path {string},path of the local configuration file
@@ -74,6 +75,7 @@ module.exports.run = function(configFile, networkFile) {
     blockchain = new Blockchain(absNetworkFile);
     monitor = new Monitor(absConfigFile);
     createReport();
+    demo.init();
     var startPromise = new Promise((resolve, reject) => {
         let config = require(absConfigFile);
         if (config.hasOwnProperty('command') && config.command.hasOwnProperty('start')){
@@ -127,6 +129,7 @@ module.exports.run = function(configFile, networkFile) {
         let output = path.join(process.cwd(), 'report'+date+'.html' );
         return report.generate(output).then(()=>{
             console.log('Generated report at ' + output);
+            demo.stopWatch(output);
             return Promise.resolve();
         });
     })
@@ -141,6 +144,7 @@ module.exports.run = function(configFile, networkFile) {
         }
     })
     .catch( (err) => {
+        demo.stopWatch();
         console.log('unexpected error, ' + (err.stack ? err.stack : err));
         let config = require(absConfigFile);
         if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
@@ -216,6 +220,7 @@ function defaultTest(args, clientNum, final) {
                 }
 
                 let msg = {
+                              type: 'test',
                               cmd : args.cmd,
                               numb: txPerClient,
                               tps:  tpsPerClient,
@@ -241,12 +246,16 @@ function defaultTest(args, clientNum, final) {
                     results = [];   // clear results array
                     round++;
                     testIdx++;
-                    var children = [];  // array of child processes
+                    var children  = [];  // promises of child processes
+                    var processes = [];
                     for(let i = 0 ; i < clientNum ; i++) {
-                        children.push(loadProcess(item, i));
+                        children.push(loadProcess(item, i, processes));
                     }
+                    demo.startWatch(processes);
+
                     return Promise.all(children)
                     .then( () => {
+                        demo.pauseWatch();
                         t.pass('passed \'' + testCmd + '\' testing');
                         processResult(testCmd, t);
                         return Promise.resolve();
@@ -256,13 +265,14 @@ function defaultTest(args, clientNum, final) {
                             return Promise.resolve();
                         }
                         else {
-                            console.log('wait 10 seconds for next round...');
-                            return sleep(10000).then( () => {
+                            console.log('wait 5 seconds for next round...');
+                            return sleep(5000).then( () => {
                                 return monitor.restart();
                             })
                         }
                     })
                     .catch( (err) => {
+                        demo.pauseWatch();
                         t.fail('failed \''  + testCmd + '\' testing, ' + (err.stack ? err.stack : err));
                         return Promise.resolve();   // continue with next round ?
                     });
@@ -285,20 +295,26 @@ function defaultTest(args, clientNum, final) {
 /**
 * fork a child process to act as a client to interact with backend's blockchain system
 * @msg {Object}, message to be sent to child process
+* @processes {Array}
 * @t {Object}, tape object
 */
-function loadProcess(msg, t) {
+function loadProcess(msg, t, processes) {
     return new Promise( function(resolve, reject) {
         var child = childProcess.fork(path.join(absCaliperDir, './src/comm/bench-client.js'));
+        processes.push(child);
         child.on('message', function(message) {
-            if(message.cmd === 'result') {
+            if(message.type === 'testResult') {
                 results.push(message.data);
                 resolve();
+                child.kill();
             }
-            if(message.cmd === 'error') {
+            else if(message.type === 'error') {
                 reject('client encountered error, ' + message.data);
+                child.kill();
             }
-            child.kill();
+            else if(message.type === 'queryResult') {
+                demo.queryCB(message.session, message.data);
+            }
         });
 
         child.on('error', function(){
