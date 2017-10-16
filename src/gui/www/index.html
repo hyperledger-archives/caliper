@@ -101,7 +101,7 @@
     var sut = "fabric.json";
     var running = false;
     var bench = "simple";
-    var logMonitor, chartMonitor;
+    var logMonitor = null, chartMonitor = null;
     var pageHtmlJson  = null;
     var charts = {
         throughput : {
@@ -160,6 +160,9 @@
     }
 
     function startLogMonitor(){
+        if(logMonitor != null) {
+            stopLogMonitor();
+        }
         logMonitor = setInterval(function(){
             var xmlhttp = new XMLHttpRequest();
             loadXMLDoc(xmlhttp, "readlog.php", function(){
@@ -174,6 +177,7 @@
 
     function stopLogMonitor() {
         clearInterval(logMonitor);
+        logMonitor = null;
     }
 
 
@@ -280,6 +284,9 @@
             }
             chartInited = true;
         }
+        if(chartMonitor != null) {
+             clearInterval(chartMonitor);
+        }
         chartMonitor = setInterval(function(){
             refreshData();
         }, 1000);
@@ -287,6 +294,7 @@
 
     function stopChartMonitor() {
         clearInterval(chartMonitor);
+        chartMonitor = null;
         chartInited = false;
     }
 
