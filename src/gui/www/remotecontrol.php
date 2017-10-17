@@ -16,7 +16,7 @@
 
         if(ssh2_auth_password($connect, $user, $pwd)){
             // start the benchmark
-            $stream = ssh2_exec($connect, $path.'start.sh ' . $_GET['b'] . ' ' . $_GET['s']);
+            $stream = ssh2_exec($connect, $path.'scripts/start.sh ' . $_GET['b'] . ' ' . $_GET['s']);
             stream_set_blocking($stream, true);
             // fetch the log file to get running result
             while($stream) {
