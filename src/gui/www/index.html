@@ -160,7 +160,7 @@
     }
 
     function startLogMonitor(){
-        if(logMonitor != null) {
+        if(logMonitor !== null) {
             stopLogMonitor();
         }
         logMonitor = setInterval(function(){
@@ -176,8 +176,10 @@
     }
 
     function stopLogMonitor() {
-        clearInterval(logMonitor);
-        logMonitor = null;
+        if(logMonitor !== null) {
+            clearInterval(logMonitor);
+            logMonitor = null;
+        }
     }
 
 
@@ -284,7 +286,7 @@
             }
             chartInited = true;
         }
-        if(chartMonitor != null) {
+        if(chartMonitor !== null) {
              clearInterval(chartMonitor);
         }
         chartMonitor = setInterval(function(){
@@ -293,8 +295,10 @@
     }
 
     function stopChartMonitor() {
-        clearInterval(chartMonitor);
-        chartMonitor = null;
+        if(chartMonitor !== null) {
+            clearInterval(chartMonitor);
+            chartMonitor = null;
+        }
         chartInited = false;
     }
 
@@ -342,8 +346,17 @@
         });
     }
 
+    function bye() {
+        stopLogMonitor();
+        stopChartMonitor();
+        var xmlhttp = new XMLHttpRequest();
+        loadXMLDoc(xmlhttp, "stop.php", function(){
+            // do nothing
+        });
+    }
+
 </script>
-<body>
+<body onbeforeunload="bye()">
 
 <main>
     <div class="left-column">
