@@ -7,6 +7,10 @@
         $port = 22;
         set_time_limit( 0);
 
+        session_start();
+        $_SESSION['started'] = true;
+        session_write_close();
+
         $connect = ssh2_connect($host, $port);
         $hasReport = false;
 
@@ -14,11 +18,15 @@
             // start the benchmark
             $stream = ssh2_exec($connect, $path.'start.sh ' . $_GET['b'] . ' ' . $_GET['s']);
             stream_set_blocking($stream, true);
-            //$stream_out = ssh2_fetch_stream($stream, SSH2_STREAM_STDIO);
-            //$stream_err = ssh2_fetch_stream($stream, SSH2_STREAM_STDERR);
-
             // fetch the log file to get running result
             while($stream) {
+                @session_start();
+                if($_SESSION['started'] == false) {
+                    echo "stopped";
+                    exit();
+                }
+                session_write_close();
+
                 sleep(1);
                 $out = ssh2_exec($connect, 'cat '.$path.'output.log');
                 stream_set_blocking($out, true);
@@ -65,17 +73,16 @@
             else {
                 echo "finished";
             }
-            //echo "output:" . stream_get_contents($stream_out);
-            //echo "error:" . stream_get_contents($stream_err);
-            //$value = stream_get_contents($stream_out);
-            //echo $value;
+            exit();
         }
         else {
             echo "error";
+            exit();
         }
     }
     catch(Exception $e) {
         echo "error";
+        exit();
     }
 
 ?>
