@@ -92,16 +92,25 @@
             background-color: #f2f2f2;
             overflow:auto;
             height:300px;
+            white-space: pre-line;
         }
     </style>
 </head>
 
+<script src="polyfills/eventsource.js"></script>
 <script src="echart/js/echarts.js"></script>
 <script type="text/javascript">
-    var sut = "fabric.json";
+    var sut = "fabric";
+    const sutConf = {
+        fabric: {
+            config: "config.json"
+        },
+        sawtooth: {
+            config: "config-sawtooth.json"
+        }
+    };
     var running = false;
     var bench = "simple";
-    var logMonitor = null, chartMonitor = null;
     var pageHtmlJson  = null;
     var charts = {
         throughput : {
@@ -120,17 +129,18 @@
         }
     };
     var chartInited = false;
+    var es = null;
 
     function selectSUT(value) {
         var eleType = document.getElementById("suttype");
         var eleSize = document.getElementById("sutsize");
         if(value === "fabric") {
-            sut = "fabric.json";
+            sut = "fabric";
             eleType.innerHTML = "Fabric v1.0.0";
             eleSize.innerHTML = "4 Peers, 1 Orderer(solo)";
         }
         if(value === "stl") {
-            sut = "sawtooth.json";
+            sut = "sawtooth";
             eleType.innerHTML = "Sawtooth v0.8.0";
             eleSize.innerHTML = "4 Validators";
         }
@@ -158,30 +168,6 @@
         xmlhttp.send();
 
     }
-
-    function startLogMonitor(){
-        if(logMonitor !== null) {
-            stopLogMonitor();
-        }
-        logMonitor = setInterval(function(){
-            var xmlhttp = new XMLHttpRequest();
-            loadXMLDoc(xmlhttp, "readlog.php", function(){
-                if(xmlhttp.readyState == 4) {
-                    var log = document.getElementById("benchlog");
-                    log.innerHTML = xmlhttp.responseText;
-                    log.scrollTop = log.scrollHeight;
-                }
-            });
-        }, 2000);
-    }
-
-    function stopLogMonitor() {
-        if(logMonitor !== null) {
-            clearInterval(logMonitor);
-            logMonitor = null;
-        }
-    }
-
 
     function initChart(id) {
         require.config({
@@ -258,49 +244,16 @@
         txinfo.innerHTML = 'Submitted: '+sub+', Succeeded: '+succ+', Failed: '+fail;
     }
 
-    function refreshData() {
-        var xmlhttp = new XMLHttpRequest();
-        loadXMLDoc(xmlhttp, "readdemojson.php", function(){
-            if(xmlhttp.readyState == 4 ) {
-                try {
-                    pageHtmlJson = JSON.parse(xmlhttp.responseText);
-                    if(pageHtmlJson !== null && chartInited) {
-                        for(let key in charts) {
-                            refreshChart(key);
-                        }
-                    }
-                    if(pageHtmlJson !== null && pageHtmlJson.hasOwnProperty('summary')) {
-                        refreshTxInfo(pageHtmlJson.summary.txSub, pageHtmlJson.summary.txSucc, pageHtmlJson.summary.txFail);
-                    }
-                }
-                catch(err) {
-                    // do nothing
-                }
-            }
-        });
-    }
-    function startChartMonitor() {
+    function initCharts() {
         if(!chartInited) {
             for(let key in charts) {
                 initChart(key);
             }
             chartInited = true;
         }
-        if(chartMonitor !== null) {
-             clearInterval(chartMonitor);
-        }
-        chartMonitor = setInterval(function(){
-            refreshData();
-        }, 1000);
     }
 
-    function stopChartMonitor() {
-        if(chartMonitor !== null) {
-            clearInterval(chartMonitor);
-            chartMonitor = null;
-        }
-        chartInited = false;
-    }
+
 
     function changeRunningStatus(value) {
         running = value;
@@ -309,15 +262,13 @@
             btn.innerHTML = "Running";
             btn.style.background = "#5e6b73";
             document.getElementById("report").href = "#";
-            startLogMonitor();
-            startChartMonitor();
+            initCharts();
             refreshTxInfo(0,0,0);
         }
         else {
             btn.innerHTML = "Run";
             btn.style.background = "#2980b9";
-            stopLogMonitor();
-            stopChartMonitor();
+            chartInited = false;
         }
     }
 
@@ -326,29 +277,64 @@
             return;
         }
 
-        var initReq = new XMLHttpRequest();
-        loadXMLDoc(initReq, "init.php", function(){
-            if(initReq.readyState == 4) {
-                changeRunningStatus(true);
-                setTimeout( function () {
-                    var xmlhttp = new XMLHttpRequest();
-                    loadXMLDoc(xmlhttp, "remotecontrol.php?b="+bench+"&s="+sut, function(){
-                        if(xmlhttp.readyState == 4) {
-                            changeRunningStatus(false);
+        if(!sutConf.hasOwnProperty(sut)) {
+            alert('unknown sut type:' + sut);
+            return;
+        }
+        if(bench !== 'simple') {
+            alert('sorry, this demo only supports ^simple^ benchmark');
+            return;
+        }
 
-                            if(xmlhttp.responseText === "ok") {
-                                document.getElementById("report").href = "report.html";
+        changeRunningStatus(true);
+        setTimeout( function () {
+            if(es !== null) {
+                es.close();
+            }
+            es = new EventSource("remotecontrol.php?b="+bench+"&s="+sutConf[sut].config);
+            es.addEventListener('error', function(e) {
+                changeRunningStatus(false);
+                es.close();
+                es = null;
+            });
+            es.addEventListener('message', function(e) {
+                var msg = JSON.parse(e.data);
+                switch(msg.type) {
+                    case 'finish':
+                        changeRunningStatus(false);
+                        es.close();
+                        es = null;
+                        break;
+                    case 'log':
+                        let item = document.getElementById("benchlog");
+                        item.innerHTML = msg.data;
+                        item.scrollTop = item.scrollHeight;
+                        break;
+                    case 'metrics':
+                        pageHtmlJson = JSON.parse(msg.data);
+                        if(pageHtmlJson !== null && chartInited) {
+                            for(let key in charts) {
+                                refreshChart(key);
                             }
                         }
-                    });
-                }, 100);
-            }
-        });
+                        if(pageHtmlJson !== null && pageHtmlJson.hasOwnProperty('summary')) {
+                            refreshTxInfo(pageHtmlJson.summary.txSub, pageHtmlJson.summary.txSucc, pageHtmlJson.summary.txFail);
+                        }
+                        break;
+                    default:
+                        alert('unknown message:'+msg.name);
+                        break;
+                }
+            });
+        }, 100);
     }
 
     function bye() {
-        stopLogMonitor();
-        stopChartMonitor();
+        if(es !== null) {
+            es.close();
+            es = null;
+        }
+        chartInited = false;
         var xmlhttp = new XMLHttpRequest();
         loadXMLDoc(xmlhttp, "stop.php", function(){
             // do nothing
