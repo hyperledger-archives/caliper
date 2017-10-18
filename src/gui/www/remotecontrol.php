@@ -1,9 +1,13 @@
-<?
+<?php
+    header("Content-Type: text/event-stream; charset=utf-8");
+    header("Cache-Control: no-store");
+    header("Access-Control-Allow-Origin: *");
+
     try {
         $user = "your user name";
         $pwd  = "your password";
-        $path = "your directory of caliper ";
-        $host = "host's ip address"
+        $path = "your directory of caliper";
+        $host = "host's ip address";
         $port = 22;
         set_time_limit( 0);
 
@@ -14,15 +18,29 @@
         $connect = ssh2_connect($host, $port);
         $hasReport = false;
 
+        /*$lastEventId = floatval(isset($_SERVER["HTTP_LAST_EVENT_ID"]) ? $_SERVER["HTTP_LAST_EVENT_ID"] : 0);
+        if ($lastEventId == 0) {
+            $lastEventId = floatval(isset($_GET["lastEventId"]) ? $_GET["lastEventId"] : 0);
+        }*/
+
+        function sendmsg($name, $data) {
+            /*global $lastEventId;
+            ++$lastEventId;*/
+            $data = array('type'=>$name, 'data'=>$data);
+            echo "data:" . json_encode($data, JSON_UNESCAPED_SLASHES) . "\n\n";
+            @ob_flush();
+            @flush();
+        }
+
         if(ssh2_auth_password($connect, $user, $pwd)){
             // start the benchmark
-            $stream = ssh2_exec($connect, $path.'scripts/start.sh ' . $_GET['b'] . ' ' . $_GET['s']);
+            $stream = ssh2_exec($connect, 'bash '.$path.'scripts/start.sh ' . $_GET['b'] . ' ' . $_GET['s']);
             stream_set_blocking($stream, true);
             // fetch the log file to get running result
             while($stream) {
                 @session_start();
                 if($_SESSION['started'] == false) {
-                    echo "stopped";
+                    sendmsg("finish", "stopped");
                     exit();
                 }
                 session_write_close();
@@ -31,17 +49,13 @@
                 $out = ssh2_exec($connect, 'cat '.$path.'output.log');
                 stream_set_blocking($out, true);
                 $result = stream_get_contents($out);
-                $file = fopen("log.txt", "w");
-                fwrite($file, $result);
-                fclose($file);
+                sendmsg("log", $result);
                 fclose($out);
 
                 $demo = ssh2_exec($connect, 'cat '.$path.'src/gui/output/demo.json');
                 stream_set_blocking($demo, true);
                 $demoResult = stream_get_contents($demo);
-                $demoFile = fopen("demo.json", "w");
-                fwrite($demoFile, $demoResult);
-                fclose($demoFile);
+                sendmsg("metrics", $demoResult);
                 if(!$hasReport) {
                     $json = json_decode($demoResult);
                     $report = $json->report;
@@ -67,21 +81,16 @@
             stream_get_contents($stream);
             fclose($stream);
 
-            if($hasReport) {
-                echo "ok";
-            }
-            else {
-                echo "finished";
-            }
+            sendmsg("finish", $hasReport?"ok":"no report");
             exit();
         }
         else {
-            echo "error";
+            sendmsg("finish", "error");
             exit();
         }
     }
     catch(Exception $e) {
-        echo "error";
+        sendmsg("finish", "error");
         exit();
     }
 
