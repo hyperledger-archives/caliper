@@ -32,6 +32,7 @@
         }
         .left-column ul{
             border-top: 1px solid #d9d9d9;
+            font-size:14px;
         }
         .left-column li,select{
             margin-bottom: 5px;
@@ -93,6 +94,7 @@
             overflow:auto;
             height:300px;
             white-space: pre-line;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -304,6 +306,10 @@
                         changeRunningStatus(false);
                         es.close();
                         es = null;
+                        break;
+                    case 'report':
+                        document.getElementById('report').href = 'report.html';
+                        window.open('report.html');
                         break;
                     case 'log':
                         let item = document.getElementById("benchlog");

@@ -68,6 +68,7 @@
                         fclose($htmlFile);
                         fclose($html);
                         $hasReport = true;
+                        sendmsg("report", "ok");
                     }
                 }
                 fclose($demo);
@@ -81,7 +82,7 @@
             stream_get_contents($stream);
             fclose($stream);
 
-            sendmsg("finish", $hasReport?"ok":"no report");
+            sendmsg("finish","ok");
             exit();
         }
         else {
