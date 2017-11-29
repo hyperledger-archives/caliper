@@ -52,7 +52,7 @@ process.on('message', function(message) {
         };
     }
     else {
-         process.send({cmd: 'error', data: 'message type was missed'});
+         process.send({type: 'error', data: 'unknown message type'});
     }
 })
 
