@@ -13,14 +13,14 @@
     "clients": 1,
     "rounds": [
       {
-        "cmd" : "publish",
+        "label" : "publish",
         "txNumbAndTps" : [[1,1]],
         "arguments": {  "itemBytes": 2048000 },
         "callback" : "benchmark/drm/publish.js",
         "out" : "itemIDs"
       },
       {
-        "cmd" : "query",
+        "label" : "query",
         "txNumbAndTps" : [[1,1]],
         "arguments": { "itemIDs" : "*#out"},
         "callback" : "benchmark/drm/query.js"

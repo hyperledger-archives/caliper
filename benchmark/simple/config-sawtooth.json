@@ -6,14 +6,14 @@
   "test": {
     "clients": 1,
     "rounds": [{
-        "cmd" : "open",
+        "label" : "open",
         "txNumbAndTps" : [[100,1]],
         "arguments": {  "money": 10000 },
         "callback" : "benchmark/simple/open.js",
         "out" : "accounts"
       },
       {
-        "cmd" : "query",
+        "label" : "query",
         "txNumbAndTps" : [[100, 1]],
         "arguments": {  "accounts":  "*#out" },
         "callback" : "benchmark/simple/query.js"
