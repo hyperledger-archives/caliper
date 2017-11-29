@@ -483,7 +483,7 @@ function getResultValue(r) {
     row.push((r.delay.sum / r.succ).toFixed(2) + ' s');
 //    row.push(max.toString() + ' tps');
 //    row.push(min.toString() + ' tps');
-    (r.valid.max === r.valid.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.valid.max - r.valid.min)).toFixed(0)) + ' tps');
+    (r.valid.max === r.valid.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.valid.max - r.create.min)).toFixed(0)) + ' tps');
     return row;
 }
 
