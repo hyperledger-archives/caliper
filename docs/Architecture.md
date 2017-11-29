@@ -43,20 +43,20 @@ Below is a configuration file example:
     "description" : "This is an example benchmark for caliper",
     "clients": 5,
     "rounds": [{
-        "cmd" : "open",
+        "label" : "open",
         "txNumbAndTps" : [[5000,100], [5000,200], [5000,300]],
         "arguments": {  "money": 10000 },
         "callback" : "benchmark/simple/open.js"
       },
       {
-        "cmd" : "open",
+        "label" : "open",
         "txNumbAndTps" : [[5000,400]],
         "arguments": {  "money": 10000 },
         "callback" : "benchmark/simple/open.js",
         "out" : "accounts"
       },
       {
-        "cmd" : "query",
+        "label" : "query",
         "txNumbAndTps" : [[5000,300], [5000,400]],
         "arguments": {  "accounts":  "*#out" },
         "callback" : "benchmark/simple/query.js"
@@ -82,9 +82,10 @@ Below is a configuration file example:
 * **command** - defines commands which will be called at particular phases of the test
   * **start** : be called at the beginning of the test
   * **end** : be called when finishing all tests
-* **test** - defines the number of simulated clients to run the tests concurrently, as well as multiple test rounds, in each test round:
+* **test** - defines the metadata of the test, as well as multiple test rounds with specified workload:
   * **name&description** : human readable name and description of the benchmark, the value is used by the report generator to show in the testing report.
-  * **cmd** : hint for the test, e.g name of the command for testing which is called by the smart contract. The value is also used as the context name for *blockchain.getContext()*. 
+  * **clients** : defines how many 'blockchain clients' will be simulated to perform the transactions
+  * **label** : hint for the test. For example, you can use the transaction name as the label name to tell which transaction is mainly used to test the performance. The value is also used as the context name for *blockchain.getContext()*. For example, developers may want to test performance of different Fabric channels, in that case, tests with different label can be bound to different fabric channels.  
   * **txNumbAndTps** : defines an array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked at a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string `*#out` is used to declare an argument with output of previous test round (see the explanation of *out* argument).
   * **callback** : specifies the user defined module used in this test round. Please see [User defined test module](#user-defined-test-module) to learn more details.

@@ -52,7 +52,7 @@ process.on('message', function(message) {
         };
     }
     else {
-         process.send({cmd: 'error', data: 'message type was missed'});
+         process.send({type: 'error', data: 'unknown message type'});
     }
 })
 
@@ -74,7 +74,7 @@ function doTest(msg) {
     var bcContext;
     var bcResults;
 
-    return blockchain.getContext(msg.cmd)
+    return blockchain.getContext(msg.label)
     .then((context) => {
         bcContext = context;
         var rounds   = Array(msg.numb).fill(0);

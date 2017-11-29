@@ -204,9 +204,9 @@ function createReport() {
 */
 function defaultTest(args, clientNum, final) {
     return new Promise( function(resolve, reject) {
-        var title = '\n\n**** End-to-end flow: testing \'' + args.cmd + '\' ****';
+        var title = '\n\n**** End-to-end flow: testing \'' + args.label + '\' ****';
         test(title, (t) => {
-            var testCmd     = args.cmd;
+            var testLabel   = args.label;
             var testRounds  = args.txNumbAndTps;
             var tests = []; // array of all test rounds
             for(let i = 0 ; i < testRounds.length ; i++) {
@@ -221,7 +221,7 @@ function defaultTest(args, clientNum, final) {
 
                 let msg = {
                               type: 'test',
-                              cmd : args.cmd,
+                              label : args.label,
                               numb: txPerClient,
                               tps:  tpsPerClient,
                               args: args.arguments,
@@ -256,8 +256,8 @@ function defaultTest(args, clientNum, final) {
                     return Promise.all(children)
                     .then( () => {
                         demo.pauseWatch();
-                        t.pass('passed \'' + testCmd + '\' testing');
-                        processResult(testCmd, t);
+                        t.pass('passed \'' + testLabel + '\' testing');
+                        processResult(testLabel, t);
                         return Promise.resolve();
                     })
                     .then( () => {
@@ -273,7 +273,7 @@ function defaultTest(args, clientNum, final) {
                     })
                     .catch( (err) => {
                         demo.pauseWatch();
-                        t.fail('failed \''  + testCmd + '\' testing, ' + (err.stack ? err.stack : err));
+                        t.fail('failed \''  + testLabel + '\' testing, ' + (err.stack ? err.stack : err));
                         return Promise.resolve();   // continue with next round ?
                     });
                 });
