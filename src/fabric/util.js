@@ -205,7 +205,7 @@ function getOrdererAdmin(client, t) {
 	    keyPath = path.join(__dirname, util.format('../../%s/ordererOrganizations/example.com/users/Admin@example.com/msp/keystore', cryptodir));
 	}
 	var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
-	var certPath = path.join(__dirname, util.format('../../%s/ordererOrganizations/example.com/users/Admin@example.com/signcerts', cryptodir));
+	var certPath = path.join(   __dirname, util.format('../../%s/ordererOrganizations/example.com/users/Admin@example.com/signcerts', cryptodir));
 	if(!fs.existsSync(certPath)) {
 	    certPath = path.join(__dirname, util.format('../../%s/ordererOrganizations/example.com/users/Admin@example.com/msp/signcerts', cryptodir));
 	}

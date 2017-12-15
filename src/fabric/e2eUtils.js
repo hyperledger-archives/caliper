@@ -110,6 +110,7 @@ function installChaincode(org, chaincode, t) {
 			targets: targets,
 			chaincodePath: chaincode.path,
 			chaincodeId: chaincode.id,
+			chaincodeType: chaincode.language,
 			chaincodeVersion: chaincode.version
 		};
 		return client.installChaincode(request);
@@ -352,6 +353,7 @@ function buildChaincodeProposal(client, the_user, chaincode, upgrade, transientM
 	var request = {
 		chaincodePath: chaincode.path,
 		chaincodeId: chaincode.id,
+		chaincodeType: chaincode.language,
 		chaincodeVersion: chaincode.version,
 		fcn: 'init',
 		args: [],       // TODO: should defined in config file
@@ -456,7 +458,9 @@ function getcontext(channelConfig) {
                     {
                         pem: Buffer.from(data).toString(),
                         'ssl-target-name-override': peerInfo['server-hostname'],
-                        'request-timeout': 120000
+                        //'request-timeout': 120000
+                        'grpc.keepalive_timeout_ms' : 3000, // time to respond to the ping, 3 seconds
+				        'grpc.keepalive_time_ms' : 360000   // time to wait for ping response, 6 minutes
                         //'grpc.http2.keepalive_time' : 15
                     }
                 );
@@ -505,7 +509,7 @@ function invokebycontext(context, id, version, args, timeout){
     var channel   = context.channel;
     var eventhubs = context.eventhubs;
     var time0     = process.uptime();
-    var tx_id     = client.newTransactionID(context.submitter);
+    var tx_id     = client.newTransactionID();
     var invoke_status = {
         id           : tx_id.getTransactionID(),
         status       : 'created',
@@ -639,7 +643,7 @@ function querybycontext(context, id, version, name) {
     var client  = context.client;
     var channel = context.channel;
     var eventhubs = context.eventhubs;
-    var tx_id   = client.newTransactionID(context.submitter);
+    var tx_id   = client.newTransactionID();
     var invoke_status = {
         id           : tx_id.getTransactionID(),
         status       : 'created',

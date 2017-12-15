@@ -59,7 +59,7 @@
         "organizations": ["org1", "org2"]
       }
     ],
-    "chaincodes": [{"id": "simple", "path": "contract/fabric/simple", "version": "v0", "channel": "mychannel"}],
+    "chaincodes": [{"id": "simple", "path": "contract/fabric/simple", "language":"golang", "version": "v0", "channel": "mychannel"}],
     "endorsement-policy": {
       "identities": [
         {
@@ -89,7 +89,7 @@
     }
   },
   "info" : {
-    "Version": "1.0.0",
+    "Version": "1.0.5",
     "Size": "4 Peers",
     "Orderer": "Solo",
     "Distribution": "Single Host"
