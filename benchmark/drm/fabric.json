@@ -60,7 +60,7 @@
         "organizations": ["org1", "org2"]
       }
     ],
-    "chaincodes": [{"id": "drm", "path": "contract/fabric/drm", "version": "v0", "channel": "mychannel"}],
+    "chaincodes": [{"id": "drm", "path": "contract/fabric/drm", "version": "v0", "language":"golang", "channel": "mychannel"}],
     "endorsement-policy": {
       "identities": [
         {
