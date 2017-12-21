@@ -17,7 +17,7 @@ var demoXLen = 60;     // default x axis length
 var demoData;
 var demoInterObj = null;
 var demoSessionID = 0;
-var demoProcesses = [];
+//var demoProcesses = [];
 var demoQueryQueue = {};
 function demoInit() {
     var fs = require('fs');
@@ -170,45 +170,47 @@ function demoQueryCB(sessionID, result) {
                 demoRefreshData(sessionID);
             }
         }
-        else{
-            console.log("Error: unknown session id " + sessionID);
+        else {
+            // final or missed msg, will be enforced refresh later
+            demoQueryQueue[sessionID] = { wait: 99999, data: [result] };
         }
     }
 }
 module.exports.queryCB = demoQueryCB;
 
-function demoStartWatch(processes) {
-    demoProcesses = processes.slice();
+var client;
+function demoStartWatch(clientObj) {
+    //demoProcesses = processes.slice();
+    client = clientObj;
     if(demoInterObj === null) {
         // start a interval to send query request
         demoInterObj = setInterval(()=>{
-            if(demoProcesses.length == 0) {
-                demoQueryCB(null);
+            let id = demoSessionID.toString();
+            demoSessionID++;
+            let ok = client.sendMessage({type: 'queryNewTx', session: id});
+            if(ok > 0) {
+                demoQueryQueue[id] = { wait: ok, data: [] };
             }
             else {
-                let id = demoSessionID.toString();
-                demoSessionID++;
-                demoProcesses.forEach((proc)=>{
-                    proc.send({type: 'queryNewTx', session: id});
-                });
-                demoQueryQueue[id] = { wait: demoProcesses.length, data: [] };
+                demoRefreshData('all');
             }
         }, demoInterval * 1000);
     }
-    demoQueryQueue['final'] = {wait: demoProcesses.length, data: []};
 }
 module.exports.startWatch = demoStartWatch;
 
 function demoPauseWatch() {
     demoData.summary.round += 1;
-    demoProcesses = [];
+    demoRefreshData('all');
 }
 
 module.exports.pauseWatch = demoPauseWatch;
 
 function demoStopWatch(output) {
-    clearInterval(demoInterObj);
-    demoInterObj = null;
+    if(demoInterObj) {
+        clearInterval(demoInterObj);
+        demoInterObj = null;
+    }
     /*if(demoQueryQueue.hasOwnProperty('final')) {
         demoRefreshData('final');
     }*/

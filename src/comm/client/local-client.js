@@ -13,7 +13,7 @@ var tape  = require('tape');
 var _test = require('tape-promise');
 var test  = _test(tape);
 var path  = require('path');
-var bc    = require('../../src/comm/blockchain.js');
+var bc    = require('../blockchain.js');
 
 /**
  * Message handler
@@ -70,7 +70,7 @@ function queryNewTxInfo() {
 
 function doTest(msg) {
     blockchain = new bc(msg.config);
-    var cb = require(path.join(__dirname, '../../', msg.cb));
+    var cb = require(path.join(__dirname, '../../..', msg.cb));
     var bcContext;
     var bcResults;
 

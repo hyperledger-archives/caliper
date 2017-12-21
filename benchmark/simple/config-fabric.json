@@ -8,7 +8,10 @@
     "end" : "docker-compose -f network/fabric/simplenetwork/docker-compose.yaml down;docker rm $(docker ps -aq)"
   },
   "test": {
-    "clients": 5,
+    "clients": {
+      "type": "local",
+      "number": 5
+    },
     "rounds": [{
         "label" : "open",
         "txNumbAndTps" : [[5000,100], [5000,200], [5000,300]],

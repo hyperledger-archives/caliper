@@ -19,9 +19,9 @@ var test = _test(tape);
 var table = require('table');
 var Blockchain = require('./blockchain.js');
 var Monitor = require('./monitor.js');
-var Report =  require('./report.js');
-var blockchain, monitor, report;
-var results = [];           // original output of recent test round
+var Report  = require('./report.js');
+var Client  = require('./client/client.js');
+var blockchain, monitor, report, client;
 var resultsbyround = [];    // processed output of each test round
 var round = 0;              // test round
 var cache = {};             // memory cache to store defined output from child process, so different test case could exchange data if needed
@@ -74,6 +74,7 @@ module.exports.run = function(configFile, networkFile) {
     absNetworkFile = networkFile;
     blockchain = new Blockchain(absNetworkFile);
     monitor = new Monitor(absConfigFile);
+    client  = new Client(absConfigFile);
     createReport();
     demo.init();
     var startPromise = new Promise((resolve, reject) => {
@@ -101,6 +102,9 @@ module.exports.run = function(configFile, networkFile) {
         return blockchain.installSmartContract();
     })
     .then( () => {
+        return client.init();
+    })
+    .then( () => {
 
         monitor.start().then(()=>{
             console.log('started monitor successfully');
@@ -110,13 +114,13 @@ module.exports.run = function(configFile, networkFile) {
         });
 
         var allTests  = require(absConfigFile).test.rounds;
-        var clientNum = require(absConfigFile).test.clients;
         var testIdx   = 0;
         var testNum   = allTests.length;
+        demo.startWatch(client);
         return allTests.reduce( (prev, item) => {
             return prev.then( () => {
                 ++testIdx;
-                return defaultTest(item, clientNum, (testIdx === testNum))
+                return defaultTest(item, (testIdx === testNum))
             });
         }, Promise.resolve());
     })
@@ -196,13 +200,12 @@ function createReport() {
 }
 
 /**
-* fork multiple child processes to do performance tests
+* load client(s) to do performance tests
 * @args {Object}: testing arguments
-* @clientNum {number}: define how many child processes should be forked
 * @final {boolean}: =true, the last test; otherwise, =false
 * @return {Promise}
 */
-function defaultTest(args, clientNum, final) {
+function defaultTest(args, final) {
     return new Promise( function(resolve, reject) {
         var title = '\n\n**** End-to-end flow: testing \'' + args.label + '\' ****';
         test(title, (t) => {
@@ -210,20 +213,20 @@ function defaultTest(args, clientNum, final) {
             var testRounds  = args.txNumbAndTps;
             var tests = []; // array of all test rounds
             for(let i = 0 ; i < testRounds.length ; i++) {
-                let txPerClient  = Math.floor(testRounds[i][0] / clientNum);
+                /*let txPerClient  = Math.floor(testRounds[i][0] / clientNum);
                 let tpsPerClient = Math.floor(testRounds[i][1] / clientNum);
                 if(txPerClient < 1) {
                     txPerClient = 1;
                 }
                 if(tpsPerClient < 1) {
                     tpsPerClient = 1;
-                }
+                }*/
 
                 let msg = {
                               type: 'test',
                               label : args.label,
-                              numb: txPerClient,
-                              tps:  tpsPerClient,
+                              numb: testRounds[i][0],
+                              tps:  testRounds[i][1],
                               args: args.arguments,
                               cb  : args.callback,
                               config: absNetworkFile
@@ -243,10 +246,9 @@ function defaultTest(args, clientNum, final) {
             return tests.reduce( function(prev, item) {
                 return prev.then( () => {
                     console.log('----test round ' + round + '----');
-                    results = [];   // clear results array
                     round++;
                     testIdx++;
-                    var children  = [];  // promises of child processes
+                   /* var children  = [];  // promises of child processes
                     var processes = [];
                     for(let i = 0 ; i < clientNum ; i++) {
                         children.push(loadProcess(item, i, processes));
@@ -258,6 +260,12 @@ function defaultTest(args, clientNum, final) {
                         demo.pauseWatch();
                         t.pass('passed \'' + testLabel + '\' testing');
                         processResult(testLabel, t);
+                        return Promise.resolve();
+                    })*/
+                    return client.startTest(item, demo.queryCB, processResult, testLabel)
+                    .then( () => {
+                        demo.pauseWatch();
+                        t.pass('passed \'' + testLabel + '\' testing');
                         return Promise.resolve();
                     })
                     .then( () => {
@@ -298,7 +306,7 @@ function defaultTest(args, clientNum, final) {
 * @processes {Array}
 * @t {Object}, tape object
 */
-function loadProcess(msg, t, processes) {
+/*function loadProcess(msg, t, processes) {
     return new Promise( function(resolve, reject) {
         var child = childProcess.fork(path.join(absCaliperDir, './src/comm/bench-client.js'));
         processes.push(child);
@@ -328,7 +336,7 @@ function loadProcess(msg, t, processes) {
 
         child.send(msg);
     });
-}
+}*/
 
 /**
 * merge testing results from multiple child processes and store the merged result in the global result array
@@ -342,16 +350,11 @@ function loadProcess(msg, t, processes) {
 *     out: {key, value}                   // output that should be cached for following tests
 * }
 * @opt, operation being tested
-* @t, tape object
+* @return {Promise}
 */
 // TODO: should be moved to a dependent 'analyser' module in which to do all result analysing work
-function processResult(opt, t){
+function processResult(results, opt){
     try{
-        if(results.length === 0) {
-            t.fail('empty result');
-            return;
-        }
-
         var r = results[0];
         putCache(r.out);
 
@@ -431,9 +434,11 @@ function processResult(opt, t){
             printTable(resourceTable);
             report.setRoundResource(idx, resourceTable);
         }
+        return Promise.resolve();
     }
     catch(err) {
         console.log(err);
+        return Promise.reject(err);
     }
 }
 
