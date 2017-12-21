@@ -42,7 +42,7 @@
     "process": [
       {
         "command" : "node",
-        "arguments" : "bench-client.js",
+        "arguments" : "local-client.js",
         "multiOutput" : "avg"
       }
     ],
