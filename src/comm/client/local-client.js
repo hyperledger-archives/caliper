@@ -68,6 +68,9 @@ function queryNewTxInfo() {
     return Promise.resolve({submitted: tmpNum, committed:stats});
 }
 
+// todo: how to synchronize the timestamp
+// need to implement
+
 function doTest(msg) {
     blockchain = new bc(msg.config);
     var cb = require(path.join(__dirname, '../../..', msg.cb));
@@ -109,7 +112,7 @@ function doTest(msg) {
         .then( (out) => {
             var stats = blockchain.getDefaultTxStats(bcResults);
             if(msg.hasOwnProperty('out') && typeof out !== 'undefined') {
-                stats.out = { key: msg['out'], value : out};
+                stats.out[0] = { key: msg['out'], value : out};
             }
             return Promise.resolve(stats);
         });

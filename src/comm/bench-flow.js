@@ -132,13 +132,13 @@ module.exports.run = function(configFile, networkFile) {
         let date = new Date().toISOString().replace(/-/g,'').replace(/:/g,'').substr(0,15);
         let output = path.join(process.cwd(), 'report'+date+'.html' );
         return report.generate(output).then(()=>{
-            console.log('Generated report at ' + output);
             demo.stopWatch(output);
+            console.log('Generated report at ' + output);
             return Promise.resolve();
         });
     })
     .then( () => {
-
+        client.stop();
         let config = require(absConfigFile);
         if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
             console.log(config.command.end);
@@ -241,7 +241,6 @@ function defaultTest(args, final) {
                 }
                 tests.push(msg);
             }
-
             var testIdx = 0;
             return tests.reduce( function(prev, item) {
                 return prev.then( () => {
@@ -262,6 +261,7 @@ function defaultTest(args, final) {
                         processResult(testLabel, t);
                         return Promise.resolve();
                     })*/
+
                     return client.startTest(item, demo.queryCB, processResult, testLabel)
                     .then( () => {
                         demo.pauseWatch();
@@ -355,67 +355,10 @@ function defaultTest(args, final) {
 // TODO: should be moved to a dependent 'analyser' module in which to do all result analysing work
 function processResult(results, opt){
     try{
+        Blockchain.mergeDefaultTxStats(results);
         var r = results[0];
-        putCache(r.out);
-
-        for(let i = 1 ; i < results.length ; i++) {
-            let v = results[i];
-            putCache(v.out);
-            r.succ += v.succ;
-            r.fail += v.fail;
-            if(v.create.min < r.create.min) {
-                r.create.min = v.create.min;
-            }
-            if(v.create.max > r.create.max) {
-                r.create.max = v.create.max;
-            }
-            if(v.valid.min < r.valid.min) {
-                r.valid.min = v.valid.min;
-            }
-            if(v.valid.max > r.valid.max) {
-                r.valid.max = v.valid.max;
-            }
-            if(v.delay.min < r.delay.min) {
-                r.delay.min = v.delay.min;
-            }
-            if(v.delay.max > r.delay.max) {
-                r.delay.max = v.delay.max;
-            }
-            r.delay.sum += v.delay.sum;
-            for(let j in v.throughput) {
-                if(typeof r.throughput[j] === 'undefined') {
-                    r.throughput[j] = v.throughput[j];
-                }
-                else {
-                    r.throughput[j] += v.throughput[j];
-                }
-            }
-
-            if(blockchain.gettype() === 'fabric' && r.hasOwnProperty('delayC2E')) {
-                if(v.delayC2E.min < r.delayC2E.min) {
-                    r.delayC2E.min = v.delayC2E.min;
-                }
-                if(v.delayC2E.max > r.delayC2E.max) {
-                    r.delayC2E.max = v.delayC2E.max;
-                }
-                r.delayC2E.sum += v.delayC2E.sum;
-
-                if(v.delayE2O.min < r.delayE2O.min) {
-                    r.delayE2O.min = v.delayE2O.min;
-                }
-                if(v.delayE2O.max > r.delayE2O.max) {
-                    r.delayE2O.max = v.delayE2O.max;
-                }
-                r.delayE2O.sum += v.delayE2O.sum;
-
-                if(v.delayO2V.min < r.delayO2V.min) {
-                    r.delayO2V.min = v.delayO2V.min;
-                }
-                if(v.delayO2V.max > r.delayO2V.max) {
-                    r.delayO2V.max = v.delayO2V.max;
-                }
-                r.delayO2V.sum += v.delayO2V.sum;
-            }
+        for(let i = 0 ; i < r.out.length ; i++) {
+            putCache(r.out[i]);
         }
         r['opt'] = opt;
 

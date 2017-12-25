@@ -10,6 +10,10 @@
 
 const CLIENT_LOCAL = 'local';
 const CLIENT_ZOO   = 'zookeeper';
+
+var zkUtil  = require('./zoo-util.js');
+var ZooKeeper = require('node-zookeeper-client');
+var clientUtil = require('./client-util.js');
 var Client = class {
     constructor(config, callback) {
         var conf = require(config);
@@ -34,14 +38,7 @@ var Client = class {
                     }
                     break;
                 case CLIENT_ZOO:
-                    this.type = CLIENT_ZOO;
-                    if(this.config.hasOwnProperty('server')) {
-                        this.server = this.config.server;
-                    }
-                    else {
-                        return Promise.reject(new Error('Failed to find zookeeper server address in config file'));
-                    }
-                    break;
+                    return this._initZoo();
                 default:
                     return Promise.reject(new Error('Unknown client type, should be local or zookeeper'));
             }
@@ -61,7 +58,7 @@ var Client = class {
     *              tps:    number of txs generated per second,
     *              args:   user defined arguments,
     *              cb  :   path of the callback js file,
-    *              config: path of the blockchain config file   TODO: how to deal with the config file when transfer it to a remote client (via zookeeper), as well as any local materials like cyrpto keys??
+    *              config: path of the blockchain config file   // TODO: how to deal with the local config file when transfer it to a remote client (via zookeeper), as well as any local materials like cyrpto keys??
     *              out:    (optional)key of the output data
     *            };
     * @queryCB {callback}, callback of query message
@@ -76,7 +73,8 @@ var Client = class {
                 p = this._startLocalTest(message, queryCB);
                 break;
             case CLIENT_ZOO:
-                // todo
+                 p = this._startZooTest(message, queryCB);
+                 break;
             default:
                 return Promise.reject(new Error('Unknown client type: ' + this.type));
         }
@@ -103,10 +101,24 @@ var Client = class {
             case CLIENT_LOCAL:
                 return this._sendLocalMessage(message);
             case CLIENT_ZOO:
-                // todo
+                return this._sendZooMessage(message).catch((err) => {
+                    return 0;
+                });
             default:
-                return Promise.reject(new Error('Unknown client type: ' + this.type));
+                console.log('Unknown client type: ' + this.type);
+                return 0;
         }
+    }
+
+    stop() {
+        switch(this.type) {
+            case CLIENT_ZOO:
+                this._stopZoo();
+            case CLIENT_LOCAL:
+            default:
+                ; // nothing todo
+        }
+        this.results = [];
     }
 
 
@@ -118,133 +130,256 @@ var Client = class {
     * functions for CLIENT_LOCAL
     */
     _startLocalTest(message, queryCB) {
-        var promises = [];
-        var path = require('path');
-        var childProcess = require('child_process');
-        this.localClients = [];
-        var results = this.results;
-        var txPerClient  = Math.floor(message.numb / this.number);
-        var tpsPerClient = Math.floor(message.tps / this.number);
-        if(txPerClient < 1) {
-            txPerClient = 1;
-        }
-        if(tpsPerClient < 1) {
-            tpsPerClient = 1;
-        }
-        message.numb = txPerClient;
-        message.tps  = tpsPerClient;
-
-        for(let i = 0 ; i < this.number ; i++) {
-            let p = new Promise( (resolve, reject) => {
-                            let child = childProcess.fork(path.join(__dirname, 'local-client.js'));
-                            this.localClients.push(child);
-                            child.on('message', function(msg) {
-                                if(msg.type === 'testResult') {
-                                    results.push(msg.data);
-                                    resolve();
-                                    child.kill();
-                                }
-                                else if(msg.type === 'error') {
-                                    reject('client encountered error, ' + msg.data);
-                                    child.kill();
-                                }
-                                else if(msg.type === 'queryResult') {
-                                    queryCB(msg.session, msg.data);
-                                }
-                            });
-
-                            child.on('error', function(){
-                                reject('client encountered unexpected error');
-                            });
-
-                            child.on('exit', function(){
-                                console.log('client exited');
-                                resolve();
-                            });
-
-                            child.send(message);
-                        });
-            promises.push(p);
-        }
-        return Promise.all(promises);
+        return clientUtil.startTest(this.number, message,queryCB, this.results);
     }
 
     _sendLocalMessage(message) {
-        this.localClients.forEach((client)=>{
-            client.send(message);
+        return clientUtil.sendMessage(message);
+    }
+
+    /**
+    * functions for CLIENT_ZOO
+    */
+    /**
+    * zookeeper structure
+    * /caliper---clients---client_xxx   // list of clients
+    *         |         |--client_yyy
+    *         |         |--....
+    *         |--client_xxx_in---msg_xxx {message}
+    *         |               |--msg_xxx {message}
+    *         |               |--......
+    *         |--client_xxx_out---msg_xxx {message}
+    *         |                |--msg_xxx {message}
+    *         |--client_yyy_in---...
+    */
+
+    _initZoo() {
+        const TIMEOUT = 5000;
+        this.type = CLIENT_ZOO;
+        this.zoo  = {
+            server: '',
+            zk: null,
+            hosts: [],    // {id, innode, outnode}
+            clientsPerHost: 1
+        };
+
+        if(!this.config.hasOwnProperty('zoo')) {
+            return Promise.reject('Failed to find zoo property in config file');
+        }
+
+        var configZoo = this.config.zoo;
+        if(configZoo.hasOwnProperty('server')) {
+            this.zoo.server = configZoo.server;
+        }
+        else {
+            return Promise.reject(new Error('Failed to find zookeeper server address in config file'));
+        }
+        if(configZoo.hasOwnProperty('clientsPerHost')) {
+            this.zoo.clientsPerHost = configZoo.clientsPerHost;
+        }
+
+        var zk = ZooKeeper.createClient(this.zoo.server, {
+            sessionTimeout: TIMEOUT,
+            spinDelay : 1000,
+            retries: 0
         });
-        return this.localClients.length;
+        this.zoo.zk = zk;
+        var zoo = this.zoo;
+        // test var p = new Promise((resolve, reject) => {
+        this.zoo.p = new Promise((resolve, reject) => {
+            zoo.connectHandle = setTimeout(()=>{
+                reject('Could not connect to ZooKeeper');
+            }, TIMEOUT+100);
+            zk.once('connected', () => {
+                console.log('Connected to ZooKeeper');
+
+                zkUtil.existsP(zk, zkUtil.NODE_CLIENT, 'Failed to find clients due to')
+                .then((found)=>{
+                    if(zoo.connectHandle) {
+                        clearTimeout(zoo.connectHandle);
+                        zoo.connectHandle = null;
+                    }
+                    if(!found) {
+                        // since zoo-client(s) should create the node if it does not exist,no caliper node means no valid zoo-client now.
+                        throw new Error('Could not found clients node in zookeeper');
+                    }
+
+                    return zkUtil.getChildrenP(
+                        zk,
+                        zkUtil.NODE_CLIENT,
+                        null,
+                        'Failed to list clients due to');
+                })
+                .then((clients) => {
+                    // TODO: not support add/remove zookeeper clients now
+                    console.log('get zookeeper clients:' + clients);
+                    for (let i = 0 ; i < clients.length ; i++) {
+                        let clientID = clients[i];
+                        this.zoo.hosts.push({
+                            id: clientID,
+                            innode: zkUtil.getInNode(clientID),
+                            outnode:zkUtil.getOutNode(clientID)
+                        });
+                    }
+                    resolve();
+                })
+                .catch((err)=>{
+                    zk.close();
+                    return reject(err);
+                });
+            });
+        });
+
+        console.log('Connecting to ZooKeeper......');
+        zk.connect();
+        return Promise.resolve();
+        //return this.zoo.p;
+    }
+
+    _startZooTest(message, queryCB) {
+        return this.zoo.p.then(() => {
+            var number = this.zoo.hosts.length;
+            var txPerClient  = Math.floor(message.numb / number);
+            var tpsPerClient = Math.floor(message.tps / number);
+            if(txPerClient < 1) {
+                txPerClient = 1;
+            }
+            if(tpsPerClient < 1) {
+                tpsPerClient = 1;
+            }
+            message.numb = txPerClient;
+            message.tps  = tpsPerClient;
+            message['clients'] = this.zoo.clientsPerHost;
+            return this._sendZooMessage(message)
+        })
+        .then((number)=>{
+            if(number > 0) {
+                return zooStartWatch(this.zoo, queryCB, number, this.results);
+            }
+            else {
+                return Promise.reject(new Error('Failed to start the remote test'));
+            }
+        })
+        .catch((err)=>{
+            console.log('Failed to start the remote test');
+            return Promise.reject(err);
+        });
+    }
+
+    _sendZooMessage(message) {
+        return this.zoo.p.then(() => {
+            var promises = [];
+            var succ = 0;
+
+            var data = new Buffer(JSON.stringify(message));
+
+            this.zoo.hosts.forEach((host)=>{
+                let p = zkUtil.createP(this.zoo.zk, host.innode+'/msg-', data, ZooKeeper.CreateMode.EPHEMERAL_SEQUENTIAL, 'Failed to send message (create node) due to')
+                        .then((path)=>{
+                            succ++;
+                            return Promise.resolve();
+                        })
+                        .catch((err)=>{
+                            return Promise.resolve();
+                        });
+                promises.push(p);
+            });
+            return Promise.all(promises)
+            .then(()=>{
+                return Promise.resolve(succ);
+            });
+        });
+    }
+
+    _stopZoo() {
+        if(this.zoo.zk) {
+            this.zoo.zk.close();
+            this.zoo.zk = null;
+        }
+        this.zoo.hosts = [];
     }
 }
 
 module.exports = Client;
 
-/**
-* get the maximum,minimum,total, average value from a number array
-* @arr {Array}
-* @return {Object}
-*/
-function getStatistics(arr) {
-    if(arr.length === 0) {
-        return {max : NaN, min : NaN, total : NaN, avg : NaN};
-    }
 
-    var max = arr[0], min = arr[0], total = arr[0];
-    for(let i = 1 ; i< arr.length ; i++) {
-        let value = arr[i];
-        if(value > max) {
-            max = value;
-        }
-        if(value < min) {
-            min = value;
-        }
-        total += value;
+/*function zooMessageCallback(zk, path, queryCB, results) {
+    return zkUtil.getDataP(zk, path, null, 'Failed to getData from zookeeper')
+        .then((data)=>{
+            let msg  = JSON.parse(data.toString());
+            let stop = false;
+            switch(msg.type) {
+                case 'testResult':
+                    results.push(msg.data);
+                    stop = true;   // stop watching
+                    break;
+                case 'error':
+                    console.log('Client encountered error, ' + msg.data);
+                    stop = true;   // stop watching
+                    break;
+                case 'queryResult':
+                    queryCB(msg.session, msg.data);
+                    stop = false;
+                    break;
+                default:
+                    console.log('Unknown message type: ' + msg.type);
+                    stop = false;
+                    break;
+            }
+            zk.remove(path, -1, (err)=>{
+                if(err) {
+                    console.log(err.stack);
+                    return;
+                }
+            });
+            return Promise.resolve(stop);
+        });
+}*/
+function zooMessageCallback(data, queryCB, results) {
+    var msg  = JSON.parse(data.toString());
+    var stop = false;
+    switch(msg.type) {
+        case 'testResult':
+            results.push(msg.data);
+            stop = true;   // stop watching
+            break;
+        case 'error':
+            console.log('Client encountered error, ' + msg.data);
+            stop = true;   // stop watching
+            break;
+        case 'queryResult':
+            queryCB(msg.session, msg.data);
+            stop = false;
+            break;
+        default:
+            console.log('Unknown message type: ' + msg.type);
+            stop = false;
+            break;
     }
-
-    return {max : max, min : min, total : total, avg : total/arr.length};
+    return Promise.resolve(stop);
 }
 
-/**
-* Normalize the byte number
-* @data {Number}
-* @return {string}
-*/
-function byteNormalize(data) {
-    if(isNaN(data)) {
-        return '-';
-    }
-    var kb = 1024;
-    var mb = kb * 1024;
-    var gb = mb * 1024;
-    if(data < kb) {
-        return data.toString() + 'B';
-    }
-    else if(data < mb) {
-        return (data / kb).toFixed(1) + 'KB';
-    }
-    else if(data < gb) {
-        return (data / mb).toFixed(1) + 'MB';
-    }
-    else{
-        return (data / gb).toFixed(1) + 'GB';
-    }
-}
-
-/**
-* Cut down the string in case it's too long
-* @data {string}
-* @return {string}
-*/
-function strNormalize(data) {
-    if(typeof data !== 'string' || data === null) {
-        return '-';
-    }
-
-    const maxLen = 30;
-    if(data.length <= maxLen) {
-        return data;
-    }
-
-    var newstr = data.slice(0,25) + '...' + data.slice(-5);
-    return newstr;
+function zooStartWatch(zoo, queryCB, numOfTermin, results) {
+    var promises = [];
+    var loop = numOfTermin;
+    var zk   = zoo.zk;
+    zoo.hosts.forEach((host)=>{
+        let path = host.outnode;
+        let lastnode = null;
+        let p = zkUtil.watchMsgQueueP(
+                    zk,
+                    path,
+                    (data)=>{
+                        return zooMessageCallback(data, queryCB, results)
+                            .catch((err) => {
+                                console.log('Exception encountered when watching message from zookeeper, due to:');
+                                console.log(err);
+                                return Promise.resolve(true);
+                            });
+                    },
+                    'Failed to watch zookeeper children'
+                );
+        promises.push(p);
+    });
+    return Promise.all(promises);
 }

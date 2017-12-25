@@ -117,7 +117,8 @@ var Blockchain = class {
     *     valid  : {min: , max: },            // min/max time of tx becoming valid
     *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay
     *     throughput : {time: ,...},          // tps of each time slot
-    *     others: {object}                    // blockchain platform specific values
+    *     out : []                            // user defined output data
+    *     // others: {object}                    // blockchain platform specific values
     * }
     */
     /**
@@ -192,14 +193,58 @@ var Blockchain = class {
             'create' : {'min' : minCreate, 'max' : maxCreate},
             'valid'  : {'min' : minValid,  'max' : maxValid },
             'delay'  : {'min' : minDelay,  'max' : maxDelay, 'sum' : delay },
-            'throughput' : throughput
+            'throughput' : throughput,
+            'out' : []
         };
 
-        if(this.bcObj.getDefaultTxStats !== 'undefined') {
+        /*if(this.bcObj.getDefaultTxStats !== 'undefined') {
             this.bcObj.getDefaultTxStats(stats, results);
-        }
+        }*/
 
         return stats;
+    }
+
+    /**
+    * merge an array of default 'txStatistics', the merged result is in the first object
+    * @ results {Array}, txStatistics array
+    */
+    static mergeDefaultTxStats(results) {
+        if(results.length === 0) return;
+
+        var r = results[0];
+        for(let i = 1 ; i < results.length ; i++) {
+            let v = results[i];
+            r.succ += v.succ;
+            r.fail += v.fail;
+            r.out.push.apply(r.out, v.out);
+            if(v.create.min < r.create.min) {
+                r.create.min = v.create.min;
+            }
+            if(v.create.max > r.create.max) {
+                r.create.max = v.create.max;
+            }
+            if(v.valid.min < r.valid.min) {
+                r.valid.min = v.valid.min;
+            }
+            if(v.valid.max > r.valid.max) {
+                r.valid.max = v.valid.max;
+            }
+            if(v.delay.min < r.delay.min) {
+                r.delay.min = v.delay.min;
+            }
+            if(v.delay.max > r.delay.max) {
+                r.delay.max = v.delay.max;
+            }
+            r.delay.sum += v.delay.sum;
+            for(let j in v.throughput) {
+                if(typeof r.throughput[j] === 'undefined') {
+                    r.throughput[j] = v.throughput[j];
+                }
+                else {
+                    r.throughput[j] += v.throughput[j];
+                }
+            }
+        }
     }
 }
 
