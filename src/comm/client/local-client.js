@@ -83,7 +83,7 @@ function doTest(msg) {
         var rounds   = Array(msg.numb).fill(0);
         var promises = [];
         var idx       = 0;
-        var start     = process.uptime();
+        var start     = Date.now();
         var sleepTime = (msg.tps > 0) ? 1000/msg.tps : 0;
 
         console.log('start client ' + process.pid +  (cb.info ? (':' + cb.info) : ''));
@@ -134,7 +134,7 @@ function rateControl(timePerTx, start, txSeq) {
     if(timePerTx === 0) {
         return Promise.resolve();
     }
-    var diff = Math.floor(timePerTx * txSeq - (process.uptime() - start)*1000);
+    var diff = Math.floor(timePerTx * txSeq - (Date.now() - start));
     if( diff > 10) {
         return sleep(diff);
     }

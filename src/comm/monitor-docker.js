@@ -61,7 +61,7 @@ class MonitorDocker extends MonitorInterface {
                     }
                 }
                 Promise.all(statPromises).then((results) => {
-                    self.stats.time.push(Date.now());
+                    self.stats.time.push(Date.now()/1000);
                     for(let i = 0 ; i < results.length ; i++) {
                         let stat = results[i];
                         let id = stat.id;

@@ -86,8 +86,8 @@ var Blockchain = class {
     *           'status':  status of the transaction, should be:
     *                        - 'created': successfully created, but not validated or committed yet
     *                        - 'success': successfully validated and committed in the ledger
-    *           'time_create': time that the transaction was created
-    *           'time_valid':  time that the transaction was known to be valid and committed in ledger
+    *           'time_create': time(ms) that the transaction was created
+    *           'time_valid':  time(ms) that the transaction was known to be valid and committed in ledger
     *           'result': response payloads of the transaction request
     *           ...... :  blockchain platform specific values
     *         }
@@ -113,12 +113,12 @@ var Blockchain = class {
     * txStatistics = {
     *     succ : ,                            // number of succeeded txs
     *     fail : ,                            // number of failed txs
-    *     create : {min: , max: },            // min/max time of tx created
-    *     valid  : {min: , max: },            // min/max time of tx becoming valid
-    *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay
+    *     create : {min: , max: },            // min/max time of tx created, in second
+    *     valid  : {min: , max: },            // min/max time of tx becoming valid, in second
+    *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay,  in second
     *     throughput : {time: ,...},          // tps of each time slot
     *     out : []                            // user defined output data
-    *     // others: {object}                    // blockchain platform specific values
+    *     // others: {object}                 // blockchain platform specific values
     * }
     */
     /**
@@ -152,7 +152,7 @@ var Blockchain = class {
             if(stat.status === 'success') {
                 succ++;
                 let valid = stat['time_valid'];
-                let d     = valid - create;
+                let d     = (valid - create) / 1000;
                 if(typeof minValid === 'undefined') {
                     minValid = valid;
                     maxValid = valid;
@@ -190,8 +190,8 @@ var Blockchain = class {
         var stats = {
             'succ' : succ,
             'fail' : fail,
-            'create' : {'min' : minCreate, 'max' : maxCreate},
-            'valid'  : {'min' : minValid,  'max' : maxValid },
+            'create' : {'min' : minCreate/1000, 'max' : maxCreate/1000},    // convert to second
+            'valid'  : {'min' : minValid/1000,  'max' : maxValid/1000 },
             'delay'  : {'min' : minDelay,  'max' : maxDelay, 'sum' : delay },
             'throughput' : throughput,
             'out' : []
