@@ -83,7 +83,8 @@ function doTest(msg) {
         var rounds   = Array(msg.numb).fill(0);
         var promises = [];
         var idx       = 0;
-        var start     = Date.now();
+        var start;
+        var initComplete = false;
         var sleepTime = (msg.tps > 0) ? 1000/msg.tps : 0;
 
         console.log('start client ' + process.pid +  (cb.info ? (':' + cb.info) : ''));
@@ -96,6 +97,10 @@ function doTest(msg) {
                     return Promise.resolve(result);
                 }));
                 idx++;
+                if (!initComplete) {
+                     initComplete = true;
+                     start = Date.now();
+                }
                 return rateControl(sleepTime, start, idx);
             });
         }, cb.init(blockchain, context, msg.args))
