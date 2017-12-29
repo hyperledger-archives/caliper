@@ -292,11 +292,10 @@ var Client = class {
     }
 
     _stopZoo() {
-        if(this.zoo.zk) {
+        if(this.zoo && this.zoo.zk) {
             this.zoo.zk.close();
-            this.zoo.zk = null;
+            this.zoo.hosts = [];
         }
-        this.zoo.hosts = [];
     }
 }
 

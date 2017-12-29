@@ -44,6 +44,19 @@ function create(zookeeper, path, data, mode, errLog) {
 }
 module.exports.createP = create;
 
+function remove(zookeeper, path, version, errLog) {
+    return new Promise((resolve, reject)=>{
+        zookeeper.remove(path, version, (err)=>{
+            if(err) {
+                console.log(errLog);
+                return reject(err);
+            }
+            return resolve();
+        });
+    });
+}
+module.exports.removeP = remove;
+
 function getData(zookeeper, path,watcher, errLog) {
     return new Promise((resolve, reject) => {
         zookeeper.getData(path, watcher, (err, data, stat) => {
@@ -73,6 +86,23 @@ function getChildren(zookeeper, path, watcher, errLog) {
     });
 }
 module.exports.getChildrenP = getChildren;
+
+function removeChildren(zookeeper, path, errLog) {
+    return getChildren(zookeeper, path, null, '')
+            .then((children)=>{
+                var promises = [];
+                children.forEach((child)=>{
+                    let p = remove(zookeeper, path+'/'+child, -1, '');
+                    promises.push(p);
+                });
+                return Promise.all(promises);
+            })
+            .catch((err)=>{
+                console.log(errLog);
+                return Promise.reject(err);
+            });
+}
+module.exports.removeChildrenP = removeChildren;
 
 function watchMsgQueue(zookeeper, path, callback, errLog) {
     var lastnode = null;
@@ -133,9 +163,6 @@ function watchMsgQueue(zookeeper, path, callback, errLog) {
                     }
                     return Promise.resolve();
                 }, (err)=>{
-                    // test
-                    console.log(err);
-
                     return Promise.resolve();
                 });
             }, Promise.resolve());

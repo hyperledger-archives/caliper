@@ -40,25 +40,27 @@ function close() {
         return;
     }
     closed = true;
-    if(inNode !== '') {
-        zk.remove(inNode, -1, (err)=>{
-            if(err) {
-                console.log(err.stack);
-                return;
-            }
-            console.log('Node '+inNode+' is deleted');
-        });
-    }
-    if(outNode !== '') {
-        zk.remove(outNode, -1, (err)=>{
-            if(err) {
-                console.log(err.stack);
-                return;
-            }
-            console.log('Node '+outNode+' is deleted');
-        });
-    }
-    zk.close();
+    clear()
+    .then(()=>{
+        let promises = [];
+        if(inNode !== '') {
+            promises.push(zkUtil.removeP(zk, inNode, -1, 'Failed to remove inNode due to'));
+        }
+        if(outNode !== '') {
+            promises.push(zkUtil.removeP(zk, outNode, -1, 'Failed to remove inNode due to'));
+        }
+    })
+    .then(()=>{
+        console.log('Node ' + inNode + ' ' + outNode + ' is deleted');
+        inNode = '';
+        outNode = '';
+        zk.close();
+    })
+    .catch((err)=>{
+        inNode = '';
+        outNode = '';
+        zk.close();
+    })
 }
 
 // {session: {interval:obj, waiting:number, submitted:0, committed:[]}}
@@ -80,11 +82,7 @@ function sendQueryResult(session) {
     var buf = new Buffer(JSON.stringify(message));
     write(buf);
 }
-function queryCB(session, data) {
-    //queryCB(msg.session, msg.data);
-    // {type: 'queryResult', session: message.session, data: queryResult}
-    //{submitted: tmpNum, committed:stats}
-
+function queryResult(session, data) {
     if(session === 'final') {   // final session is committed without original request message
         let message = {
             type: 'queryResult',
@@ -112,11 +110,22 @@ function queryCB(session, data) {
     }
 }
 
-function finishCB() {
+function finish() {
     Blockchain.mergeDefaultTxStats(results);
     var message = {type: 'testResult', data: results[0]};
     var buf = new Buffer(JSON.stringify(message));
     write(buf);
+}
+
+function clear() {
+    var promises = [];
+    if(inNode !== '') {
+        promises.push(zkUtil.removeChildrenP(zk, inNode, 'Failed to remove children due to'));
+    }
+    if(outNode !== '') {
+        promises.push(zkUtil.removeChildrenP(zk, outNode, 'Failed to remove children due to'));
+    }
+    return Promise.all(promises);
 }
 
 function write(data) {
@@ -133,19 +142,22 @@ function zooMessageCallback(data) {
         case 'test':
             localClients = msg.clients;
             results = [];
-            clientUtil.startTest(msg.clients, msg,queryCB, results)
+            zkUtil.removeChildrenP(zk, outNode, 'Failed to remove children in outNode due to')
+            .then(()=>{
+                return clientUtil.startTest(msg.clients, msg, queryResult, results);
+            })
             .then(() => {
-                return finishCB();
+                return finish();
             })
             .catch((err)=>{
                 console.log('==Exception while testing, ' + err);
                 results = [];   // clear all results and then return the end message
-                return finishCB();
+                return finish();
             });
             break;
         case 'queryNewTx':
             let obj = setTimeout(()=>{
-                queryCB(msg.session, 'timeout');
+                queryResult(msg.session, 'timeout');
             },WAITING_TIMEOUT);
             let p = {
                 waiting: localClients,
@@ -155,6 +167,9 @@ function zooMessageCallback(data) {
             };
             p.waiting = clientUtil.sendMessage(msg);
             queryWaiting[msg.session] = p;
+            break;
+        case 'quit':
+            clear();
             break;
         default:
             clientUtil.sendMessage(msg);
@@ -193,7 +208,9 @@ function watch() {
                 });
         },
         'Failed to watch children nodes in zookeeper'
-    )
+    ).catch((err) => {
+        return;
+    })
 }
 
 zk.once('connected', function() {
