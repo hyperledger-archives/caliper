@@ -1,7 +1,7 @@
 {
   "blockchain": {
     "type": "fabric",
-    "config": "benchmark/simple/fabric.json"
+    "config": "benchmark/simple/fabric-remote.json"
   },
   "command" : {
     "start": "docker-compose -f network/fabric/simplenetwork/docker-compose.yaml up -d",

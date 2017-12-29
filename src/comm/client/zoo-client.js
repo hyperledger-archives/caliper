@@ -9,7 +9,7 @@
 
 if (process.argv.length < 3) {
     console.log('Missed zookeeper address');
-    exit(0);
+    process.exit(0);
 }
 
 var Blockchain = require('../blockchain.js');
