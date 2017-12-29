@@ -32,17 +32,10 @@
       }]
   },
   "monitor": {
-    "type": ["docker", "process"],
+    "type": ["docker"],
     "docker":{
       "name": ["all"]
     },
-    "process": [
-      {
-        "command" : "node",
-        "arguments" : "local-client.js",
-        "multiOutput" : "avg"
-      }
-    ],
     "interval": 1
   }
 }

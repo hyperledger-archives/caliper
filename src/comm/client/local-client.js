@@ -77,6 +77,10 @@ function doTest(msg) {
     var bcContext;
     var bcResults;
 
+    // test
+    console.log('config='+msg.config);
+    console.log('callback='+cb);
+
     return blockchain.getContext(msg.label)
     .then((context) => {
         bcContext = context;
