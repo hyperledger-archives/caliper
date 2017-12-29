@@ -212,6 +212,7 @@ function defaultTest(args, final) {
             var testLabel   = args.label;
             var testRounds  = args.txNumbAndTps;
             var tests = []; // array of all test rounds
+            var configPath = path.relative(absCaliperDir, absNetworkFile);
             for(let i = 0 ; i < testRounds.length ; i++) {
                 /*let txPerClient  = Math.floor(testRounds[i][0] / clientNum);
                 let tpsPerClient = Math.floor(testRounds[i][1] / clientNum);
@@ -229,7 +230,7 @@ function defaultTest(args, final) {
                               tps:  testRounds[i][1],
                               args: args.arguments,
                               cb  : args.callback,
-                              config: absNetworkFile
+                              config: configPath
                            };
                 for( let key in args.arguments) {
                     if(args.arguments[key] === "*#out") { // from previous cached data

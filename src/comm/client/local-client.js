@@ -72,14 +72,10 @@ function queryNewTxInfo() {
 // need to implement
 
 function doTest(msg) {
-    blockchain = new bc(msg.config);
+    blockchain = new bc(path.join(__dirname, '../../..', msg.config));
     var cb = require(path.join(__dirname, '../../..', msg.cb));
     var bcContext;
     var bcResults;
-
-    // test
-    console.log('config='+msg.config);
-    console.log('callback='+cb);
 
     return blockchain.getContext(msg.label)
     .then((context) => {
