@@ -116,7 +116,7 @@ module.exports.run = function(configFile, networkFile) {
         var allTests  = require(absConfigFile).test.rounds;
         var testIdx   = 0;
         var testNum   = allTests.length;
-        demo.startWatch(client);
+        //demo.startWatch(client);
         return allTests.reduce( (prev, item) => {
             return prev.then( () => {
                 ++testIdx;
@@ -262,6 +262,8 @@ function defaultTest(args, final) {
                         processResult(testLabel, t);
                         return Promise.resolve();
                     })*/
+
+                    demo.startWatch(client);
 
                     return client.startTest(item, demo.queryCB, processResult, testLabel)
                     .then( () => {

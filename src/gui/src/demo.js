@@ -74,9 +74,9 @@ function demoRefreshX() {
 }
 
 function demoAddThroughput(sub, suc, fail) {
-    demoData.throughput.submitted.push(sub);
-    demoData.throughput.succeeded.push(suc);
-    demoData.throughput.failed.push(fail);
+    demoData.throughput.submitted.push(sub/demoInterval);
+    demoData.throughput.succeeded.push(suc/demoInterval);
+    demoData.throughput.failed.push(fail/demoInterval);
     demoData.summary.txSub  += sub;
     demoData.summary.txSucc += suc;
     demoData.summary.txFail += fail;
@@ -126,9 +126,9 @@ function demoRefreshData(sessionID) {
         if(suc > 0) {
             deAvg /= suc;
         }
-        sub /= demoInterval;
+        /*sub /= demoInterval;
         suc /= demoInterval;
-        fail /= demoInterval;
+        fail /= demoInterval;*/
         demoAddThroughput(sub, suc, fail);
 
         if(deMax === NaN || deMin === NaN || deAvg === 0) {
@@ -141,6 +141,11 @@ function demoRefreshData(sessionID) {
     }
 
     demoRefreshX();
+
+    console.log('Submitted: ' + demoData.summary.txSub
+        + ' Succ: ' + demoData.summary.txSucc
+        + ' Fail:' +  demoData.summary.txFail
+        + ' Unfinished:' + (demoData.summary.txSub - demoData.summary.txSucc - demoData.summary.txFail));
 
     delete demoQueryQueue[sessionID];
 
@@ -179,17 +184,24 @@ function demoQueryCB(sessionID, result) {
 module.exports.queryCB = demoQueryCB;
 
 var client;
+var started = false;
 function demoStartWatch(clientObj) {
     //demoProcesses = processes.slice();
     client = clientObj;
+    started = true;
     if(demoInterObj === null) {
         // start a interval to send query request
         demoInterObj = setInterval(()=>{
             let id = demoSessionID.toString();
             demoSessionID++;
-            let ok = client.sendMessage({type: 'queryNewTx', session: id});
-            if(ok > 0) {
-                demoQueryQueue[id] = { wait: ok, data: [] };
+            if(started) {
+                let ok = client.sendMessage({type: 'queryNewTx', session: id});
+                if(ok > 0) {
+                    demoQueryQueue[id] = { wait: ok, data: [] };
+                }
+                else {
+                    demoRefreshData('all');
+                }
             }
             else {
                 demoRefreshData('all');
@@ -201,7 +213,8 @@ module.exports.startWatch = demoStartWatch;
 
 function demoPauseWatch() {
     demoData.summary.round += 1;
-    demoRefreshData('all');
+    started = false;
+    //demoRefreshData('all');
 }
 
 module.exports.pauseWatch = demoPauseWatch;
