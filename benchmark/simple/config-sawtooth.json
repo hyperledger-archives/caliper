@@ -4,7 +4,10 @@
     "config": "benchmark/simple/sawtooth.json"
   },
   "test": {
-    "clients": 1,
+    "clients": {
+      "type": "local",
+      "number": 1
+    },
     "rounds": [{
         "label" : "open",
         "txNumbAndTps" : [[100,1]],

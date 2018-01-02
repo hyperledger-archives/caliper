@@ -10,7 +10,10 @@
   "test": {
     "name": "drm",
     "description" : "Benchmark for DRM scenario",
-    "clients": 1,
+    "clients": {
+      "type": "local",
+      "number": 1
+    },
     "rounds": [
       {
         "label" : "publish",
