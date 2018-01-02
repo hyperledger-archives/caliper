@@ -508,12 +508,12 @@ function invokebycontext(context, id, version, args, timeout){
     var client    = context.client;
     var channel   = context.channel;
     var eventhubs = context.eventhubs;
-    var time0     = process.uptime();
+    var time0     = Date.now();
     var tx_id     = client.newTransactionID();
     var invoke_status = {
         id           : tx_id.getTransactionID(),
         status       : 'created',
-        time_create  : process.uptime(),
+        time_create  : Date.now(),
         time_valid   : 0,
         time_endorse : 0,
         time_order   : 0,
@@ -536,7 +536,7 @@ function invokebycontext(context, id, version, args, timeout){
 	return channel.sendTransactionProposal(request)
 	.then((results) =>{
 		pass_results = results;
-		invoke_status.time_endorse = process.uptime();
+		invoke_status.time_endorse = Date.now();
 		var proposalResponses = pass_results[0];
 
 		var proposal = pass_results[1];
@@ -569,12 +569,11 @@ function invokebycontext(context, id, version, args, timeout){
 			};
 
 			var deployId = tx_id.getTransactionID();
-
 			var eventPromises = [];
-			var newTimeout = (timeout - (process.uptime() - time0)) * 1000;
-			if(newTimeout < 1000) {
+			var newTimeout = timeout * 1000 - (Date.now() - time0);
+			if(newTimeout < 10000) {
 			    console.log("WARNING: timeout is too small, default value is used instead");
-			    newTimeout = 1000;
+			    newTimeout = 10000;
 			}
 
 			eventhubs.forEach((eh) => {
@@ -606,7 +605,7 @@ function invokebycontext(context, id, version, args, timeout){
 			return channel.sendTransaction(request)
 			.then((response) => {
 			    orderer_response  = response;
-			    invoke_status.time_order = process.uptime();
+			    invoke_status.time_order = Date.now();
 			    return Promise.all(eventPromises);
 			})
 			.then((results) => {
@@ -621,7 +620,7 @@ function invokebycontext(context, id, version, args, timeout){
 
 		if (response.status === 'SUCCESS') {
 			invoke_status.status = 'success';
-			invoke_status.time_valid = process.uptime();
+			invoke_status.time_valid = Date.now();
 			return Promise.resolve(invoke_status);
 		} else {
 			throw new Error('Failed to order the transaction. Error code: ' + response.status);
@@ -631,7 +630,7 @@ function invokebycontext(context, id, version, args, timeout){
 	    // return resolved, so we can use promise.all to handle multiple invoking
 	    // invoke_status is used to judge the invoking result
 	    console.log('Invoke chaincode failed, ' + (err.stack?err.stack:err));
-	    invoke_status.time_valid = process.uptime();
+	    invoke_status.time_valid = Date.now();
 	    invoke_status.status     = 'failed';
 	    return Promise.resolve(invoke_status);
 	});
@@ -647,7 +646,7 @@ function querybycontext(context, id, version, name) {
     var invoke_status = {
         id           : tx_id.getTransactionID(),
         status       : 'created',
-        time_create  : process.uptime(),
+        time_create  : Date.now(),
         time_valid   : 0,
         result       : null
     };
@@ -676,7 +675,7 @@ function querybycontext(context, id, version, name) {
 	            }
 	        }
 
-	        invoke_status.time_valid = process.uptime();
+	        invoke_status.time_valid = Date.now();
 	        invoke_status.result     = responses[0];
 	        invoke_status.status     = 'success';
 	        return Promise.resolve(invoke_status);
@@ -687,7 +686,7 @@ function querybycontext(context, id, version, name) {
 	})
 	.catch((err) => {
 	    console.log('Query failed, ' + (err.stack?err.stack:err));
-	    invoke_status.time_valid = process.uptime();
+	    invoke_status.time_valid = Date.now();
 	    invoke_status.status     = 'failed';
 	    return Promise.resolve(invoke_status);
 	});

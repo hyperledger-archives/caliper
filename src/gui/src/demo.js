@@ -17,7 +17,7 @@ var demoXLen = 60;     // default x axis length
 var demoData;
 var demoInterObj = null;
 var demoSessionID = 0;
-var demoProcesses = [];
+//var demoProcesses = [];
 var demoQueryQueue = {};
 function demoInit() {
     var fs = require('fs');
@@ -74,9 +74,9 @@ function demoRefreshX() {
 }
 
 function demoAddThroughput(sub, suc, fail) {
-    demoData.throughput.submitted.push(sub);
-    demoData.throughput.succeeded.push(suc);
-    demoData.throughput.failed.push(fail);
+    demoData.throughput.submitted.push(sub/demoInterval);
+    demoData.throughput.succeeded.push(suc/demoInterval);
+    demoData.throughput.failed.push(fail/demoInterval);
     demoData.summary.txSub  += sub;
     demoData.summary.txSucc += suc;
     demoData.summary.txFail += fail;
@@ -126,9 +126,9 @@ function demoRefreshData(sessionID) {
         if(suc > 0) {
             deAvg /= suc;
         }
-        sub /= demoInterval;
+        /*sub /= demoInterval;
         suc /= demoInterval;
-        fail /= demoInterval;
+        fail /= demoInterval;*/
         demoAddThroughput(sub, suc, fail);
 
         if(deMax === NaN || deMin === NaN || deAvg === 0) {
@@ -141,6 +141,11 @@ function demoRefreshData(sessionID) {
     }
 
     demoRefreshX();
+
+    console.log('Submitted: ' + demoData.summary.txSub
+        + ' Succ: ' + demoData.summary.txSucc
+        + ' Fail:' +  demoData.summary.txFail
+        + ' Unfinished:' + (demoData.summary.txSub - demoData.summary.txSucc - demoData.summary.txFail));
 
     delete demoQueryQueue[sessionID];
 
@@ -170,45 +175,55 @@ function demoQueryCB(sessionID, result) {
                 demoRefreshData(sessionID);
             }
         }
-        else{
-            console.log("Error: unknown session id " + sessionID);
+        else {
+            // final or missed msg, will be enforced refresh later
+            demoQueryQueue[sessionID] = { wait: 99999, data: [result] };
         }
     }
 }
 module.exports.queryCB = demoQueryCB;
 
-function demoStartWatch(processes) {
-    demoProcesses = processes.slice();
+var client;
+var started = false;
+function demoStartWatch(clientObj) {
+    //demoProcesses = processes.slice();
+    client = clientObj;
+    started = true;
     if(demoInterObj === null) {
         // start a interval to send query request
         demoInterObj = setInterval(()=>{
-            if(demoProcesses.length == 0) {
-                demoQueryCB(null);
+            let id = demoSessionID.toString();
+            demoSessionID++;
+            if(started) {
+                let ok = client.sendMessage({type: 'queryNewTx', session: id});
+                if(ok > 0) {
+                    demoQueryQueue[id] = { wait: ok, data: [] };
+                }
+                else {
+                    demoRefreshData('all');
+                }
             }
             else {
-                let id = demoSessionID.toString();
-                demoSessionID++;
-                demoProcesses.forEach((proc)=>{
-                    proc.send({type: 'queryNewTx', session: id});
-                });
-                demoQueryQueue[id] = { wait: demoProcesses.length, data: [] };
+                demoRefreshData('all');
             }
         }, demoInterval * 1000);
     }
-    demoQueryQueue['final'] = {wait: demoProcesses.length, data: []};
 }
 module.exports.startWatch = demoStartWatch;
 
 function demoPauseWatch() {
     demoData.summary.round += 1;
-    demoProcesses = [];
+    started = false;
+    //demoRefreshData('all');
 }
 
 module.exports.pauseWatch = demoPauseWatch;
 
 function demoStopWatch(output) {
-    clearInterval(demoInterObj);
-    demoInterObj = null;
+    if(demoInterObj) {
+        clearInterval(demoInterObj);
+        demoInterObj = null;
+    }
     /*if(demoQueryQueue.hasOwnProperty('final')) {
         demoRefreshData('final');
     }*/

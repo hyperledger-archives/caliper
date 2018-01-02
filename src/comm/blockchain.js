@@ -86,8 +86,8 @@ var Blockchain = class {
     *           'status':  status of the transaction, should be:
     *                        - 'created': successfully created, but not validated or committed yet
     *                        - 'success': successfully validated and committed in the ledger
-    *           'time_create': time that the transaction was created
-    *           'time_valid':  time that the transaction was known to be valid and committed in ledger
+    *           'time_create': time(ms) that the transaction was created
+    *           'time_valid':  time(ms) that the transaction was known to be valid and committed in ledger
     *           'result': response payloads of the transaction request
     *           ...... :  blockchain platform specific values
     *         }
@@ -113,11 +113,12 @@ var Blockchain = class {
     * txStatistics = {
     *     succ : ,                            // number of succeeded txs
     *     fail : ,                            // number of failed txs
-    *     create : {min: , max: },            // min/max time of tx created
-    *     valid  : {min: , max: },            // min/max time of tx becoming valid
-    *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay
+    *     create : {min: , max: },            // min/max time of tx created, in second
+    *     valid  : {min: , max: },            // min/max time of tx becoming valid, in second
+    *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay,  in second
     *     throughput : {time: ,...},          // tps of each time slot
-    *     others: {object}                    // blockchain platform specific values
+    *     out : []                            // user defined output data
+    *     // others: {object}                 // blockchain platform specific values
     * }
     */
     /**
@@ -151,7 +152,7 @@ var Blockchain = class {
             if(stat.status === 'success') {
                 succ++;
                 let valid = stat['time_valid'];
-                let d     = valid - create;
+                let d     = (valid - create) / 1000;
                 if(typeof minValid === 'undefined') {
                     minValid = valid;
                     maxValid = valid;
@@ -189,17 +190,61 @@ var Blockchain = class {
         var stats = {
             'succ' : succ,
             'fail' : fail,
-            'create' : {'min' : minCreate, 'max' : maxCreate},
-            'valid'  : {'min' : minValid,  'max' : maxValid },
+            'create' : {'min' : minCreate/1000, 'max' : maxCreate/1000},    // convert to second
+            'valid'  : {'min' : minValid/1000,  'max' : maxValid/1000 },
             'delay'  : {'min' : minDelay,  'max' : maxDelay, 'sum' : delay },
-            'throughput' : throughput
+            'throughput' : throughput,
+            'out' : []
         };
 
-        if(this.bcObj.getDefaultTxStats !== 'undefined') {
+        /*if(this.bcObj.getDefaultTxStats !== 'undefined') {
             this.bcObj.getDefaultTxStats(stats, results);
-        }
+        }*/
 
         return stats;
+    }
+
+    /**
+    * merge an array of default 'txStatistics', the merged result is in the first object
+    * @ results {Array}, txStatistics array
+    */
+    static mergeDefaultTxStats(results) {
+        if(results.length === 0) return;
+
+        var r = results[0];
+        for(let i = 1 ; i < results.length ; i++) {
+            let v = results[i];
+            r.succ += v.succ;
+            r.fail += v.fail;
+            r.out.push.apply(r.out, v.out);
+            if(v.create.min < r.create.min) {
+                r.create.min = v.create.min;
+            }
+            if(v.create.max > r.create.max) {
+                r.create.max = v.create.max;
+            }
+            if(v.valid.min < r.valid.min) {
+                r.valid.min = v.valid.min;
+            }
+            if(v.valid.max > r.valid.max) {
+                r.valid.max = v.valid.max;
+            }
+            if(v.delay.min < r.delay.min) {
+                r.delay.min = v.delay.min;
+            }
+            if(v.delay.max > r.delay.max) {
+                r.delay.max = v.delay.max;
+            }
+            r.delay.sum += v.delay.sum;
+            for(let j in v.throughput) {
+                if(typeof r.throughput[j] === 'undefined') {
+                    r.throughput[j] = v.throughput[j];
+                }
+                else {
+                    r.throughput[j] += v.throughput[j];
+                }
+            }
+        }
     }
 }
 

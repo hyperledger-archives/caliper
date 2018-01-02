@@ -75,7 +75,7 @@ const restApiUrl = 'http://127.0.0.1:8080'
 function getState(address) {
 	var invoke_status = {
 			status       : 'created',
-			time_create  : process.uptime(),
+			time_create  : Date.now(),
 			time_valid   : 0,
 			result       : null
 	};
@@ -97,7 +97,7 @@ function getState(address) {
 			let stateData = stateDataBuffer.toString('hex')
 			console.log('stateData: ' + stateData)
 
-			invoke_status.time_valid = process.uptime();
+			invoke_status.time_valid = Date.now();
 			invoke_status.result     = stateData;
 			invoke_status.status     = 'success';
 			return Promise.resolve(invoke_status);
@@ -122,7 +122,7 @@ function submitBatches(batchBytes) {
 	var invoke_status = {
 		id           : 0,
 		status       : 'created',
-		time_create  : process.uptime(),
+		time_create  : Date.now(),
 		time_valid   : 0,
 		time_endorse : 0,
 		time_order   : 0,
@@ -214,7 +214,7 @@ function getBatchStatusByRequest(resolve, statusLink, invoke_status, intervalID,
 		if (hasPending != true){
 			console.log('invoke_status.status success')
 			invoke_status.status = 'success';
-			invoke_status.time_valid = process.uptime();
+			invoke_status.time_valid = Date.now();
 			clearInterval(intervalID)
 			clearTimeout(timeoutID)
 			return resolve(invoke_status);
