@@ -129,7 +129,7 @@ function clear() {
 }
 
 function write(data) {
-    return zkUtil.createP(zk, outNode+'/msg-', data, ZooKeeper.CreateMode.EPHEMERAL_SEQUENTIAL, 'Failed to send message (create node) due to');
+    return zkUtil.createP(zk, outNode+'/msg_', data, ZooKeeper.CreateMode.EPHEMERAL_SEQUENTIAL, 'Failed to send message (create node) due to');
 }
 
 function zooMessageCallback(data) {

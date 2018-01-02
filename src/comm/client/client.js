@@ -274,7 +274,7 @@ var Client = class {
             var data = new Buffer(JSON.stringify(message));
 
             this.zoo.hosts.forEach((host)=>{
-                let p = zkUtil.createP(this.zoo.zk, host.innode+'/msg-', data, ZooKeeper.CreateMode.EPHEMERAL_SEQUENTIAL, 'Failed to send message (create node) due to')
+                let p = zkUtil.createP(this.zoo.zk, host.innode+'/msg_', data, ZooKeeper.CreateMode.EPHEMERAL_SEQUENTIAL, 'Failed to send message (create node) due to')
                         .then((path)=>{
                             succ++;
                             return Promise.resolve();
