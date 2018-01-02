@@ -7,7 +7,8 @@
   },
   "scripts": {
     "test" : "node ./scripts/test.js",
-    "list" : "node ./scripts/list.js"
+    "list" : "node ./scripts/list.js",
+    "startclient": "node ./src/comm/client/zoo-client.js"
   },
   "engines": {
     "node": ">=4.5.0",
@@ -22,6 +23,7 @@
     "fs-extra": "^4.0.2",
     "jsrsasign": "^8.0.4",
     "mustache": "^2.3.0",
+    "node-zookeeper-client": "^0.2.2",
     "pidusage": "^1.1.6",
     "ps-node": "^0.1.6",
     "request": "^2.81.0",
