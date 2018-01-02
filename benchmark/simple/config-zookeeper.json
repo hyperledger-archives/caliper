@@ -1,7 +1,7 @@
 {
   "blockchain": {
     "type": "fabric",
-    "config": "benchmark/simple/fabric.json"
+    "config": "benchmark/simple/fabric-remote.json"
   },
   "command" : {
     "start": "docker-compose -f network/fabric/simplenetwork/docker-compose.yaml up -d",
@@ -11,41 +11,31 @@
     "name": "simple",
     "description" : "This is an example benchmark for caliper, to test the backend DLT's performance with simple account opening & querying transactions",
     "clients": {
-      "type": "local",
-      "number": 5
+      "type": "zookeeper",
+      "zoo" : {
+        "server": "10.229.42.159:2181",
+        "clientsPerHost": 5
+      }
     },
     "rounds": [{
         "label" : "open",
-        "txNumbAndTps" : [[5000,100], [5000,200], [5000,300]],
-        "arguments": {  "money": 10000 },
-        "callback" : "benchmark/simple/open.js"
-      },
-      {
-        "label" : "open",
-        "txNumbAndTps" : [[5000,400]],
+        "txNumbAndTps" : [[2000,200]],
         "arguments": {  "money": 10000 },
         "callback" : "benchmark/simple/open.js",
         "out" : "accounts"
       },
       {
         "label" : "query",
-        "txNumbAndTps" : [[5000,300], [5000,400]],
+        "txNumbAndTps" : [[2000,200]],
         "arguments": {  "accounts":  "*#out" },
         "callback" : "benchmark/simple/query.js"
       }]
   },
   "monitor": {
-    "type": ["docker", "process"],
+    "type": ["docker"],
     "docker":{
       "name": ["all"]
     },
-    "process": [
-      {
-        "command" : "node",
-        "arguments" : "local-client.js",
-        "multiOutput" : "avg"
-      }
-    ],
     "interval": 1
   }
 }

@@ -13,7 +13,7 @@ var tape  = require('tape');
 var _test = require('tape-promise');
 var test  = _test(tape);
 var path  = require('path');
-var bc    = require('../../src/comm/blockchain.js');
+var bc    = require('../blockchain.js');
 
 /**
  * Message handler
@@ -68,9 +68,12 @@ function queryNewTxInfo() {
     return Promise.resolve({submitted: tmpNum, committed:stats});
 }
 
+// todo: how to synchronize the timestamp
+// need to implement
+
 function doTest(msg) {
-    blockchain = new bc(msg.config);
-    var cb = require(path.join(__dirname, '../../', msg.cb));
+    blockchain = new bc(path.join(__dirname, '../../..', msg.config));
+    var cb = require(path.join(__dirname, '../../..', msg.cb));
     var bcContext;
     var bcResults;
 
@@ -95,8 +98,8 @@ function doTest(msg) {
                 }));
                 idx++;
                 if (!initComplete) {
-                    initComplete = true;
-                    start = process.uptime();
+                     initComplete = true;
+                     start = Date.now();
                 }
                 return rateControl(sleepTime, start, idx);
             });
@@ -114,7 +117,7 @@ function doTest(msg) {
         .then( (out) => {
             var stats = blockchain.getDefaultTxStats(bcResults);
             if(msg.hasOwnProperty('out') && typeof out !== 'undefined') {
-                stats.out = { key: msg['out'], value : out};
+                stats.out[0] = { key: msg['out'], value : out};
             }
             return Promise.resolve(stats);
         });
@@ -136,7 +139,7 @@ function rateControl(timePerTx, start, txSeq) {
     if(timePerTx === 0) {
         return Promise.resolve();
     }
-    var diff = Math.floor(timePerTx * txSeq - (process.uptime() - start)*1000);
+    var diff = Math.floor(timePerTx * txSeq - (Date.now() - start));
     if( diff > 10) {
         return sleep(diff);
     }
