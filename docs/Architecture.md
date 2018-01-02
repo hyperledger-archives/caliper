@@ -27,7 +27,9 @@ A default benchmark engine is implemented to help developers to understand the f
 
 ### Configuration File
  
-Below is a configuration file example:
+Two kinds of configuration files are used. One is the benchmark configuration file, which defines the arguments of the benchmark like workload. Another is the blockchain configuration file, which specify necessary information to help interacting with the SUT.  
+
+Below is a benchmark configuration file example:
 ```json
 {
   "blockchain": {
@@ -41,7 +43,10 @@ Below is a configuration file example:
   "test": {
     "name": "simple",
     "description" : "This is an example benchmark for caliper",
-    "clients": 5,
+    "clients": {
+      "type": "local",
+      "number": 5
+    },
     "rounds": [{
         "label" : "open",
         "txNumbAndTps" : [[5000,100], [5000,200], [5000,300]],
@@ -70,7 +75,7 @@ Below is a configuration file example:
     "process": [
       {
         "command" : "node",
-        "arguments" : "bench-client.js",
+        "arguments" : "local-client.js",
         "multiOutput" : "avg"
       }
     ],
@@ -84,7 +89,16 @@ Below is a configuration file example:
   * **end** : be called when finishing all tests
 * **test** - defines the metadata of the test, as well as multiple test rounds with specified workload:
   * **name&description** : human readable name and description of the benchmark, the value is used by the report generator to show in the testing report.
-  * **clients** : defines how many 'blockchain clients' will be simulated to perform the transactions
+  * **clients** : defines the client type as well as relevant arguments, the 'type' property must be 'local' or 'zookeeper'
+    * local: In this case, local processes will be forked and act as blockchain clients. The number of forked clients should be defined by 'number' property.
+    * zookeeper: In this case, clients could be located on different machines and take tasks from master via zookeeper. Zookeeper server address as well as the number of simulated blockchain clients which launch locally by zookeeper client should be defined. A example of zookeeper configuration defined is as below: 
+      ```
+      "type": "zookeeper",
+      "zoo" : {
+        "server": "10.229.42.159:2181",
+        "clientsPerHost": 5
+      }
+      ```
   * **label** : hint for the test. For example, you can use the transaction name as the label name to tell which transaction is mainly used to test the performance. The value is also used as the context name for *blockchain.getContext()*. For example, developers may want to test performance of different Fabric channels, in that case, tests with different label can be bound to different fabric channels.  
   * **txNumbAndTps** : defines an array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked at a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string `*#out` is used to declare an argument with output of previous test round (see the explanation of *out* argument).
@@ -95,28 +109,46 @@ Below is a configuration file example:
   * process : a process monitor is used to monitor specified local process. For example, users can use this monitor to watch the resource consumption of simulated blockchain clients. The 'command' and 'arguments' properties are used to specify the processes. The 'multiOutput' property is used to define the meaning of the output if multiple processes are found. 'avg' means the output is the average resource consumption of those processes, while 'sum' means the output is the summing consumption.  
   * others : to be implemented.
 
-### Master Process
+### Master
 
-The default test flow contains three stages. The first is 'preparing' stage. In this stage, the application creates and initializes a blockchain object with the configuration file, deploys smart contracts as specified in the configuration and starts a monitor object to monitor the resource consumption of backend blockchain system.
+The master implements a default test flow which contains three stages:
 
-The second stage is 'testing' stage. The application starts a loop to do the test according to the *test* argument. In each test round, multiple child processes are created to perform the task. Testing results from each child process are recorded for later use.
+* Preparing stage: In this stage, the master creates and initializes an internal blockchain object with the blockchain configuration file, deploys smart contracts as specified in the configuration and starts a monitor object to monitor the resource consumption of backend blockchain system.
+
+* Testing stage: In this stage, the master starts a loop to perform tests according to the benchmark configuration file. Tasks will be generated and assigned to clients according to the defined workload. Performance statistics return by clients will be stored for later analyzing.
     
-The final stage is 'finishing' stage. Performance statistics is generated in this stage.
+* Reporting stage: Statistics from all clients of each test round are analyzed, and a HTML format report will be generated automatically. A report example is as below:
 
-### Child Process
+![Report example](report.png)
 
-Nodejs is single-threaded by nature. The default benchmark engine uses cluster to do the actual testing tasks to improve throughput on multi-core machines. The total workload are divided and assigned equally to child processes. A child process acts as a blockchain client with a temporarily generated context to interact with the backend blockchain system. The context usually contains the client's identity and cryptographic materials, and will be released after all the testing tasks are finished.
+### Clients
 
-For Hyperledger Fabric, the context is bound to a specific channel, the relationship is defined in fabric configuration file. 
+#### Local clients
+
+In this mode, the master uses Node.js cluster module to fork multiple local clients (child processes) to do the actual testing work. As Node.js is single-threaded by nature, local cluster could be useful to improve clients' performance on multi-core machine. 
+
+The total workload are divided and assigned equally to child processes. A child process acts as a blockchain client with a temporarily generated context to interact with the backend blockchain system. The context usually contains the client's identity and cryptographic materials, and will be released when the testing task is finished.
+
+* For Hyperledger Fabric, the context is also bound to a specific channel, the relationship is defined in fabric configuration file. 
   
-The actual testing task should be implemented in independent modules with specific functions exported. The child process imports such modules to perform actual transactions asynchronously.
+The client invokes a test module which implements user defined testing logic.The module is explained later.
+
+#### Zookeeper clients
+
+In this mode, multiple zookeeper clients are launched independently. A zookeeper client will register itself after launch and watch for testing tasks. After testing, a znode which contains the result of performance statistics will be created.
+
+A zookeeper client also forks multiple child processes to do the actual testing work. 
+
+For more details, please refer to TBD.
  
 ### User defined test module
 
+A test module implements functions that actually generate and submit transactions. By this way, developers can implement their own testing logic and integrate it with the benchmark engine.  
+
 Three functions should be implemented and exported, all those functions should return a Promise object.
 
-* `init` - Will be called by a child process at the beginning of the tests with a given blockchain object and context, as well as user defined arguments read from configuration file. The blockchain object and context should be saved for later use, and other initialization work could be implemented in here.
-* `run` - The actual transactions should be generated and invoked in here. The child process will call this function repeatedly according to assigned workload, so it is recommended that only one transaction is generated in this function for fine-grained workload control, but of course this is not a MUST requirement. The implementation process should be asynchronous.
-* `end` - Will be called by the child process when all the tests are finished, any clearing work should be implemented in here. As explained before, new child processes are created in each test round, so it's impossible to use local variables in the testing module to save data across different test rounds. This function also gives a way to return any data that should be cached for later use. Of course developers could implement their own caching mechanism by using database or file systems, etc.
+* `init` - Will be called by a client at the beginning of the test with a given blockchain object and context, as well as user defined arguments read from the benchmark configuration file. The blockchain object and context should be saved for later use, and other initialization work could be implemented in here.
+* `run` - The actual transactions should be generated and submitted in here. The client will call this function repeatedly according to the workload. It is recommended that only one transaction is submitted by each call, but this is not a MUST requirement. If multiple transactions are submitted each time, the actual workload may be different with the configured workload. The function should be ran in asynchronous way.
+* `end` - Will be called when the test is finished, any clearing work should be implemented in here. For benchmark with mutiple testing rounds, new clients will be generated for each testing round. So don't use local variables to save data across different testing rounds. One way to save such data is specifying the output in the benchmark configuration file and returning the data by this function. Please read the explanation of 'out' and 'arguments' of benchmark configuration file to learn how to set the property. Of course developers can use database or file systems to cache data by their own.
 
 
