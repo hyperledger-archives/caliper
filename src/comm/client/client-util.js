@@ -83,7 +83,16 @@ function startTest(number, message, clientArgs, updates, results) {
         count++;
     }
     if(count === number) {  // already launched clients
-        let txPerClient  = Math.floor(message.numb / number);
+        var txPerClient;
+        if (message.numb) {
+            // Run specified number of transactions
+            txPerClient  = Math.floor(message.numb / number);
+        } else if (message.duration) {
+            // Run for time specified duration       
+            txPerClient  = Math.floor(message.duration * message.tps);
+        } else {
+            return reject(new Error('Unconditioned transaction rate driving mode'));
+        }
         let tpsPerClient = Math.floor(message.tps / number);
         if(txPerClient < 1) {
             txPerClient = 1;

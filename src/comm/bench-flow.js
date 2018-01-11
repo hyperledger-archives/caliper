@@ -220,28 +220,29 @@ function defaultTest(args, clientArgs, final) {
         var t = global.tapeObj;
         t.comment('\n\n###### testing \'' + args.label + '\' ######');
         var testLabel   = args.label;
-        var testRounds  = args.txNumbAndTps;
+        var testRounds  = args.durationAndTps ? args.durationAndTps : args.txNumbAndTps;
         var tests = []; // array of all test rounds
         var configPath = path.relative(absCaliperDir, absNetworkFile);
         for(let i = 0 ; i < testRounds.length ; i++) {
             let msg = {
-                          type: 'test',
-                          label : args.label,
-                          numb: testRounds[i][0],
-                          tps:  testRounds[i][1],
-                          args: args.arguments,
-                          cb  : args.callback,
-                          config: configPath
-                       };
-            /* obsoleted
-            for( let key in args.arguments) {
-                if(args.arguments[key] === "*#out") { // from previous cached data
-                    msg.args[key] = getCache(key);
-                }
+                type: 'test',
+                label : args.label,
+                tps:  testRounds[i][1],
+                trim: args.trim ? args.trim : 0,
+                args: args.arguments,
+                cb  : args.callback,
+                config: configPath
+             };
+  
+            // condition for time based or number based test driving
+            if (args.txNumbAndTps) {
+                msg.numb = testRounds[i][0];
+            } else if (args.durationAndTps) {
+                msg.duration = testRounds[i][0]
+            } else {
+                return reject(new Error('Unspecified test driving mode'));
             }
-            if (args.hasOwnProperty('out')) {
-                msg.out = args.out;
-            }*/
+
             tests.push(msg);
         }
         var testIdx = 0;
