@@ -100,9 +100,9 @@ class Fabric extends BlockchainInterface{
                 break;
             }
             if(stat.status === 'success') {
-                let delayC2E = stat['time_endorse'] - stat['time_create'];
-                let delayE2O = stat['time_order'] - stat['time_endorse'];
-                let delayO2V = stat['time_valid'] - stat['time_order'];
+                let delayC2E = (stat['time_endorse'] - stat['time_create'])/1000;
+                let delayE2O = (stat['time_order'] - stat['time_endorse'])/1000;
+                let delayO2V = (stat['time_valid'] - stat['time_order'])/1000;
 
                 if(delayC2E < minDelayC2E) {
                     minDelayC2E = delayC2E;
