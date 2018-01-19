@@ -1,0 +1,25 @@
+{
+  "iroha": {
+    "network": {
+      "user" :{
+        "admin@test": {
+          "key-pub":"network/iroha/simplenetwork/admin@test.pub",
+          "key-priv":"network/iroha/simplenetwork/admin@test.priv"
+        }
+      },
+      "node0": {
+        "torii": "localhost:50051",
+        "test-user": "admin@test"
+      },
+      "node1": {
+        "torii": "localhost:50052",
+        "test-user": "admin@test"
+      }
+    }
+  },
+  "info" : {
+    "Version": "develop",
+    "Size": "2 Peers",
+    "Distribution": "Single Host"
+  }
+}
