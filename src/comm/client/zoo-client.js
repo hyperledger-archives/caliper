@@ -118,6 +118,9 @@ function finish() {
 }
 
 function clear() {
+    // test
+    console.log("invoke here!!!");
+
     var promises = [];
     if(inNode !== '') {
         promises.push(zkUtil.removeChildrenP(zk, inNode, 'Failed to remove children due to'));
@@ -125,6 +128,7 @@ function clear() {
     if(outNode !== '') {
         promises.push(zkUtil.removeChildrenP(zk, outNode, 'Failed to remove children due to'));
     }
+    clientUtil.stop();
     return Promise.all(promises);
 }
 

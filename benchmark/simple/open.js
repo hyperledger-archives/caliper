@@ -30,5 +30,7 @@ module.exports.run = function() {
 }
 
 module.exports.end = function(results) {
-    return Promise.resolve(accounts);
+    return Promise.resolve();
 }
+
+module.exports.accounts = accounts;

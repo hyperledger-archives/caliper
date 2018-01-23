@@ -13,13 +13,10 @@ module.exports.info  = "querying accounts";
 var bc, contx;
 var accounts;
 module.exports.init = function(blockchain, context, args) {
-    if(!args.hasOwnProperty('accounts') || args['accounts'].length === 0) {
-        return Promise.reject(new Error("simple.query - 'accounts' is missed in the arguments"));
-    }
-
+    var open = require('./open.js');
     bc       = blockchain;
     contx    = context;
-    accounts = args.accounts;
+    accounts = open.accounts;
     return Promise.resolve();
 }
 

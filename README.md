@@ -96,7 +96,7 @@ $ npm test -- simple -c ./benchmark/simple/config.json -n ./benchmark/simple/fab
 In this way, multiple clients can be launched on distributed hosts to run the same benchmark.
 
 1. Start the ZooKeeper service
-2. Launch clients on target machines separately by running `node ./src/comm/client/zoo-client.js zookeeper-server` or `npm npm run startclient -- zookeeper-server` . Time synchronization between target machines should be executed before launching the clients.  
+2. Launch clients on target machines separately by running `node ./src/comm/client/zoo-client.js zookeeper-server` or `npm run startclient -- zookeeper-server` . Time synchronization between target machines should be executed before launching the clients.  
 
     Example:
     ```bash

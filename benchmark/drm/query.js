@@ -13,13 +13,10 @@ module.exports.info  = "querying digital items";
 var bc, contx;
 var itemIDs;
 module.exports.init = function(blockchain, context, args) {
-    if(!args.hasOwnProperty('itemIDs') || args['itemIDs'].length === 0) {
-        return Promise.reject(new Error("drm.query - 'itemIDs' is missed in the arguments"));
-    }
-
+    var publish = require('./publish.js');
     bc      = blockchain;
     contx   = context;
-    itemIDs = args.itemIDs;
+    itemIDs = publish.ids;
     return Promise.resolve();
 }
 
