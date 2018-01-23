@@ -87,7 +87,7 @@ function doTest(msg) {
         var initComplete = false;
         var sleepTime = (msg.tps > 0) ? 1000/msg.tps : 0;
 
-        console.log('start client ' + process.pid +  (cb.info ? (':' + cb.info) : ''));
+        console.log('Info: client ' + process.pid +  ' start test ' + (cb.info ? (':' + cb.info) : ''));
 
         return rounds.reduce(function(prev, item) {
             return prev.then( () => {
@@ -116,9 +116,9 @@ function doTest(msg) {
         })
         .then( (out) => {
             var stats = blockchain.getDefaultTxStats(bcResults);
-            if(msg.hasOwnProperty('out') && typeof out !== 'undefined') {
+            /* obsoleted if(msg.hasOwnProperty('out') && typeof out !== 'undefined') {
                 stats.out[0] = { key: msg['out'], value : out};
-            }
+            }*/
             return Promise.resolve(stats);
         });
     })

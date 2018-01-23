@@ -24,26 +24,28 @@ var Client  = require('./client/client.js');
 var blockchain, monitor, report, client;
 var resultsbyround = [];    // processed output of each test round
 var round = 0;              // test round
-var cache = {};             // memory cache to store defined output from child process, so different test case could exchange data if needed
-                            // this should only be used to exchange small amount of data
+//var cache = {};             // memory cache to store defined output from child process, so different test case could exchange data if needed
+                             // this should only be used to exchange small amount of data
+                             // obsoleted
 var demo = require('../gui/src/demo.js')
 var absConfigFile, absNetworkFile;
 var absCaliperDir = path.join(__dirname, '../..');
 
+// obsoleted
 /**
 * Read cached data by key name
 * @key {string}
 * @return {Object}, cached data
 */
-function getCache(key) {
+/*function getCache(key) {
     return cache[key];
-}
+}*/
 
 /**
 * Write data in the global cache
 * @data {Object}, key/value
 */
-function putCache(data) {
+/*function putCache(data) {
     if(typeof data === 'undefined') {
         return;
     }
@@ -63,7 +65,7 @@ function putCache(data) {
             cache[data.key] = [data.value];
         }
     }
-}
+}*/
 
 /**
 * Start a default test flow to run the tests
@@ -232,6 +234,7 @@ function defaultTest(args, final) {
                               cb  : args.callback,
                               config: configPath
                            };
+                /* obsoleted
                 for( let key in args.arguments) {
                     if(args.arguments[key] === "*#out") { // from previous cached data
                         msg.args[key] = getCache(key);
@@ -239,7 +242,7 @@ function defaultTest(args, final) {
                 }
                 if (args.hasOwnProperty('out')) {
                     msg.out = args.out;
-                }
+                }*/
                 tests.push(msg);
             }
             var testIdx = 0;
@@ -350,7 +353,7 @@ function defaultTest(args, final) {
 *     valid  : {min: , max: },            // min/max time of tx becoming valid
 *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay
 *     throughput : {time: ,...}           // tps of each time slot
-*     out: {key, value}                   // output that should be cached for following tests
+*     // obsoleted out: {key, value}                   // output that should be cached for following tests
 * }
 * @opt, operation being tested
 * @return {Promise}
@@ -360,9 +363,9 @@ function processResult(results, opt){
     try{
         Blockchain.mergeDefaultTxStats(results);
         var r = results[0];
-        for(let i = 0 ; i < r.out.length ; i++) {
+        /*for(let i = 0 ; i < r.out.length ; i++) {
             putCache(r.out[i]);
-        }
+        }*/
         r['opt'] = opt;
 
         resultsbyround.push(r);

@@ -54,16 +54,8 @@ Below is a benchmark configuration file example:
         "callback" : "benchmark/simple/open.js"
       },
       {
-        "label" : "open",
-        "txNumbAndTps" : [[5000,400]],
-        "arguments": {  "money": 10000 },
-        "callback" : "benchmark/simple/open.js",
-        "out" : "accounts"
-      },
-      {
         "label" : "query",
         "txNumbAndTps" : [[5000,300], [5000,400]],
-        "arguments": {  "accounts":  "*#out" },
         "callback" : "benchmark/simple/query.js"
       }]
   },
@@ -100,10 +92,9 @@ Below is a benchmark configuration file example:
       }
       ```
   * **label** : hint for the test. For example, you can use the transaction name as the label name to tell which transaction is mainly used to test the performance. The value is also used as the context name for *blockchain.getContext()*. For example, developers may want to test performance of different Fabric channels, in that case, tests with different label can be bound to different fabric channels.  
-  * **txNumbAndTps** : defines an array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked at a speed of 400 transactions per second. In above example, actually six (not three) test rounds are defined.
-  * **arguments** : user defined arguments which will be passed directly to the user defined test module. A reserved key string `*#out` is used to declare an argument with output of previous test round (see the explanation of *out* argument).
+  * **txNumbAndTps** : defines an array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked at a speed of 400 transactions per second. In above example, actually 5 (not 2) test rounds are defined.
+  * **arguments** : user defined arguments which will be passed directly to the user defined test module. 
   * **callback** : specifies the user defined module used in this test round. Please see [User defined test module](#user-defined-test-module) to learn more details.
-  * **out** : name of the output of this test rounds. If existed, the output of the user defined module will be cached for later use. If multiple sub-rounds are defined, those outputs will be concatenated as a single output.
 * **monitor** - defines the type of resource monitors and monitored objects, as well as the time interval for the monitoring.
   * docker : a docker monitor is used to monitor specified docker containers on local or remote hosts. Docker Remote API is used to retrieve remote container's stats. Reserved container name 'all' means all containers on the host will be watched. In above example, the monitor will retrieve the stats of two containers per second, one is a local container named 'peer0.org1.example.com' and another is a remote container named 'orderer.example.com' located on host '192.168.1.100', 2375 is the listening port of Docker on that host.
   * process : a process monitor is used to monitor specified local process. For example, users can use this monitor to watch the resource consumption of simulated blockchain clients. The 'command' and 'arguments' properties are used to specify the processes. The 'multiOutput' property is used to define the meaning of the output if multiple processes are found. 'avg' means the output is the average resource consumption of those processes, while 'sum' means the output is the summing consumption.  
@@ -133,13 +124,15 @@ The total workload are divided and assigned equally to child processes. A child 
   
 The client invokes a test module which implements user defined testing logic.The module is explained later.
 
+A local client will only be launched once at beginning of the first test round, and be destroyed after finishing all the tests.
+
 #### Zookeeper clients
 
 In this mode, multiple zookeeper clients are launched independently. A zookeeper client will register itself after launch and watch for testing tasks. After testing, a znode which contains the result of performance statistics will be created.
 
-A zookeeper client also forks multiple child processes to do the actual testing work. 
+A zookeeper client also forks multiple child processes (local clients) to do the actual testing work as described above. 
 
-For more details, please refer to TBD.
+For more details, please refer to [Zookeper Client Design](Zookeeper%20client%20design.md).
  
 ### User defined test module
 
@@ -147,8 +140,6 @@ A test module implements functions that actually generate and submit transaction
 
 Three functions should be implemented and exported, all those functions should return a Promise object.
 
-* `init` - Will be called by a client at the beginning of the test with a given blockchain object and context, as well as user defined arguments read from the benchmark configuration file. The blockchain object and context should be saved for later use, and other initialization work could be implemented in here.
-* `run` - The actual transactions should be generated and submitted in here. The client will call this function repeatedly according to the workload. It is recommended that only one transaction is submitted by each call, but this is not a MUST requirement. If multiple transactions are submitted each time, the actual workload may be different with the configured workload. The function should be ran in asynchronous way.
-* `end` - Will be called when the test is finished, any clearing work should be implemented in here. For benchmark with mutiple testing rounds, new clients will be generated for each testing round. So don't use local variables to save data across different testing rounds. One way to save such data is specifying the output in the benchmark configuration file and returning the data by this function. Please read the explanation of 'out' and 'arguments' of benchmark configuration file to learn how to set the property. Of course developers can use database or file systems to cache data by their own.
-
-
+* `init` - Will be called by a client at beginning of each test round with a given blockchain object and context, as well as user defined arguments read from the benchmark configuration file. The blockchain object and context should be saved for later use, and other initialization work could be implemented in here.
+* `run` - The actual transactions should be generated and submitted in here using Caliper's blockchain APIs. The client will call this function repeatedly according to the workload. It is recommended that only one transaction is submitted in each call, but this is not a MUST requirement. If multiple transactions are submitted each time, the actual workload may be different with the configured workload. The function should be ran in asynchronous way.
+* `end` - Will be called at the end of each test round, any clearing work should be implemented here. 

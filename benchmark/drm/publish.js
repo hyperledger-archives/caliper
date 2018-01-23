@@ -14,6 +14,10 @@ module.exports.info  = "publishing digital items";
 
 var bc, contx;
 var itemBytes = 1024;   // default value
+var ids = [];           // save the generated item ids
+
+module.exports.ids = ids;
+
 module.exports.init = function(blockchain, context, args) {
     if(args.hasOwnProperty('itemBytes') ) {
        itemBytes = args.itemBytes;
@@ -39,15 +43,13 @@ module.exports.run = function() {
 }
 
 module.exports.end = function(results) {
-    var ids = [];
     for (let i in results){
         let stat = results[i];
         if(stat.status === 'success') {
             ids.push(stat.result.toString());
         }
     }
-
-    return Promise.resolve(ids);
+    return Promise.resolve();
 }
 /**********************
 * save published items' identity

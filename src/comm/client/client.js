@@ -114,9 +114,12 @@ var Client = class {
         switch(this.type) {
             case CLIENT_ZOO:
                 this._stopZoo();
+                break;
             case CLIENT_LOCAL:
+                clientUtil.stop();
+                break;
             default:
-                ; // nothing todo
+                ; // nothing to do
         }
         this.results = [];
     }
@@ -293,8 +296,13 @@ var Client = class {
 
     _stopZoo() {
         if(this.zoo && this.zoo.zk) {
-            this.zoo.zk.close();
-            this.zoo.hosts = [];
+            var msg = {type: 'quit'};
+            this._sendZooMessage(msg).then(()=>{
+                setTimeout(()=>{
+                    this.zoo.zk.close();
+                    this.zoo.hosts = [];
+                }, 1000);
+            })
         }
     }
 }

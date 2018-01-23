@@ -21,16 +21,8 @@
         "callback" : "benchmark/simple/open.js"
       },
       {
-        "label" : "open",
-        "txNumbAndTps" : [[5000,400]],
-        "arguments": {  "money": 10000 },
-        "callback" : "benchmark/simple/open.js",
-        "out" : "accounts"
-      },
-      {
         "label" : "query",
         "txNumbAndTps" : [[5000,300], [5000,400]],
-        "arguments": {  "accounts":  "*#out" },
         "callback" : "benchmark/simple/query.js"
       }]
   },
