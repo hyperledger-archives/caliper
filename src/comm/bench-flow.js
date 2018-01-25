@@ -73,97 +73,99 @@ var absCaliperDir = path.join(__dirname, '../..');
 */
 module.exports.run = function(configFile, networkFile) {
     test("----------------", (t) => {
-    global.tapeObj = t;
-    absConfigFile  = configFile;
-    absNetworkFile = networkFile;
-    blockchain = new Blockchain(absNetworkFile);
-    monitor = new Monitor(absConfigFile);
-    client  = new Client(absConfigFile);
-    createReport();
-    demo.init();
-    var startPromise = new Promise((resolve, reject) => {
-        let config = require(absConfigFile);
-        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('start')){
-            console.log(config.command.start);
-            let child = exec(config.command.start, {cwd: absCaliperDir}, (err, stdout, stderr) => {
-                if (err) {
-                    return reject(err);
-                }
-                return resolve();
+        global.tapeObj = t;
+        absConfigFile  = configFile;
+        absNetworkFile = networkFile;
+        blockchain = new Blockchain(absNetworkFile);
+        monitor = new Monitor(absConfigFile);
+        client  = new Client(absConfigFile);
+        createReport();
+        demo.init();
+        var startPromise = new Promise((resolve, reject) => {
+            let config = require(absConfigFile);
+            if (config.hasOwnProperty('command') && config.command.hasOwnProperty('start')){
+                console.log(config.command.start);
+                let child = exec(config.command.start, {cwd: absCaliperDir}, (err, stdout, stderr) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    return resolve();
+                });
+                child.stdout.pipe(process.stdout);
+                child.stderr.pipe(process.stderr);
+            }
+            else {
+                resolve();
+            }
+        });
+
+        startPromise.then(() => {
+            return blockchain.init();
+        })
+        .then( () => {
+            return blockchain.installSmartContract();
+        })
+        .then( () => {
+            return client.init().then((number)=>{
+                return blockchain.createClients(number);
             });
-            child.stdout.pipe(process.stdout);
-            child.stderr.pipe(process.stderr);
-        }
-        else {
-            resolve();
-        }
-    });
+        })
+        .then( () => {
 
-    startPromise.then(() => {
-        return blockchain.init();
-    })
-    .then( () => {
-        return blockchain.installSmartContract();
-    })
-    .then( () => {
-        return client.init();
-    })
-    .then( () => {
+            monitor.start().then(()=>{
+                console.log('started monitor successfully');
+            })
+            .catch( (err) => {
+                console.log('could not start monitor, ' + (err.stack ? err.stack : err));
+            });
 
-        monitor.start().then(()=>{
-            console.log('started monitor successfully');
+            var allTests  = require(absConfigFile).test.rounds;
+            var testIdx   = 0;
+            var testNum   = allTests.length;
+            //demo.startWatch(client);
+            return allTests.reduce( (prev, item) => {
+                return prev.then( () => {
+                    ++testIdx;
+                    return defaultTest(item, (testIdx === testNum))
+                });
+            }, Promise.resolve());
+        })
+        .then( () => {
+            console.log('----------finished test----------\n');
+            printResultsByRound();
+            monitor.printMaxStats();
+            monitor.stop();
+            let date = new Date().toISOString().replace(/-/g,'').replace(/:/g,'').substr(0,15);
+            let output = path.join(process.cwd(), 'report'+date+'.html' );
+            return report.generate(output).then(()=>{
+                demo.stopWatch(output);
+                console.log('Generated report at ' + output);
+                return Promise.resolve();
+            });
+        })
+        .then( () => {
+            client.stop();
+            let config = require(absConfigFile);
+            if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
+                console.log(config.command.end);
+                let end = exec(config.command.end, {cwd: absCaliperDir});
+                end.stdout.pipe(process.stdout);
+                end.stderr.pipe(process.stderr);
+            }
+            t.end();
         })
         .catch( (err) => {
-            console.log('could not start monitor, ' + (err.stack ? err.stack : err));
+            demo.stopWatch();
+            console.log('unexpected error, ' + (err.stack ? err.stack : err));
+            let config = require(absConfigFile);
+            if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
+                console.log(config.command.end);
+                let end = exec(config.command.end, {cwd: absCaliperDir});
+                end.stdout.pipe(process.stdout);
+                end.stderr.pipe(process.stderr);
+            }
+            t.end();
         });
-
-        var allTests  = require(absConfigFile).test.rounds;
-        var testIdx   = 0;
-        var testNum   = allTests.length;
-        //demo.startWatch(client);
-        return allTests.reduce( (prev, item) => {
-            return prev.then( () => {
-                ++testIdx;
-                return defaultTest(item, (testIdx === testNum))
-            });
-        }, Promise.resolve());
-    })
-    .then( () => {
-        console.log('----------finished test----------\n');
-        printResultsByRound();
-        monitor.printMaxStats();
-        monitor.stop();
-        let date = new Date().toISOString().replace(/-/g,'').replace(/:/g,'').substr(0,15);
-        let output = path.join(process.cwd(), 'report'+date+'.html' );
-        return report.generate(output).then(()=>{
-            demo.stopWatch(output);
-            console.log('Generated report at ' + output);
-            return Promise.resolve();
-        });
-    })
-    .then( () => {
-        client.stop();
-        let config = require(absConfigFile);
-        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
-            console.log(config.command.end);
-            let end = exec(config.command.end, {cwd: absCaliperDir});
-            end.stdout.pipe(process.stdout);
-            end.stderr.pipe(process.stderr);
-        }
-        t.end();
-    })
-    .catch( (err) => {
-        demo.stopWatch();
-        console.log('unexpected error, ' + (err.stack ? err.stack : err));
-        let config = require(absConfigFile);
-        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
-            console.log(config.command.end);
-            let end = exec(config.command.end, {cwd: absCaliperDir});
-            end.stdout.pipe(process.stdout);
-            end.stderr.pipe(process.stderr);
-        }
-        t.end();
-    });
     });
 }
 

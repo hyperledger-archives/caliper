@@ -125,14 +125,16 @@ function watchMsgQueue(zookeeper, path, callback, errLog) {
         .then((children)=>{
             if(!cont) return;
             if(children.length === 0)  return;
-            children.sort();
+            children.sort();    // handle message one by one
+            let preKnown = lastnode;
+            lastnode = children[children.length - 1];
             let newidx = -1;
-            if(lastnode === null) {
+            if(preKnown === null) {
                 newidx = 0;
             }
             else {  // get recent unknown message
                 for(let i = 0 ; i < children.length ; i++) {
-                    if(children[i] > lastnode) {
+                    if(children[i] > preKnown) {
                         newidx = i;
                         break;
                     }
@@ -141,9 +143,9 @@ function watchMsgQueue(zookeeper, path, callback, errLog) {
             if(newidx < 0) {  // no new message
                 return;
             }
-            lastnode = children[children.length - 1];
+
             let newNodes = children.slice(newidx);
-            return newNodes.reduce( (prev, item) => {
+            newNodes.reduce( (prev, item) => {
                 return prev.then( () => {
                     return getData(zookeeper, path+'/'+item, null, 'Failed to getData from zookeeper');
                 })
@@ -163,14 +165,16 @@ function watchMsgQueue(zookeeper, path, callback, errLog) {
                         cont = false;
                     }
                     return Promise.resolve();
-                }, (err)=>{
+                })
+                .catch((err)=>{
                     return Promise.resolve();
                 });
             }, Promise.resolve());
         })
         .catch((err)=>{
             console.log(errLog);
-            reject(err);
+            cont = false;
+            resolve();
         });
     }
 

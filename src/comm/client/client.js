@@ -37,7 +37,7 @@ var Client = class {
                     else {
                         this.number = 1;
                     }
-                    return Promise.resolve();
+                    return Promise.resolve(this.number);
                 case CLIENT_ZOO:
                     return this._initZoo();
                 default:
@@ -194,7 +194,6 @@ var Client = class {
                                 reject('Could not connect to ZooKeeper');
                             }, TIMEOUT+100);
         var p = new Promise((resolve, reject) => {
-        //this.zoo.p = new Promise((resolve, reject) => {
             zk.once('connected', () => {
                 console.log('Connected to ZooKeeper');
                 clearTimeout(connectHandle);
@@ -222,7 +221,7 @@ var Client = class {
                             outnode:zkUtil.getOutNode(clientID)
                         });
                     }
-                    resolve();
+                    resolve(clients.length * zoo.clientsPerHost);
                 })
                 .catch((err)=>{
                     zk.close();

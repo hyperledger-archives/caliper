@@ -134,9 +134,7 @@ function write(data) {
 }
 
 function zooMessageCallback(data) {
-    //return zkUtil.getDataP(zk, path, null, 'Failed to getData from zookeeper')
     var msg  = JSON.parse(data.toString());
-    // test
     console.log('Receive message, type='+msg.type);
 
     switch(msg.type) {
@@ -180,23 +178,6 @@ function zooMessageCallback(data) {
 }
 
 function watch() {
-    /*zkUtil.watchChildrenP(
-        zk,
-        inNode,
-        (children) => {
-            if(children.length === 0) {
-                return Promise.resolve(false);
-            }
-            children.sort();
-            return zooMessageCallback(inNode+'/'+children[0])
-                .catch((err) => {
-                    console.log('Exception encountered when watching message from zookeeper, due to:');
-                    console.log(err);
-                    return Promise.resolve(true);
-                });
-        },
-        'Failed to watch children nodes in zookeeper'
-    )*/
     zkUtil.watchMsgQueueP(
         zk,
         inNode,
