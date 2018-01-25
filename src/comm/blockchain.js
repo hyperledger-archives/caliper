@@ -23,6 +23,11 @@ var Blockchain = class {
             this.bcType = 'sawtooth';
             this.bcObj = new sawtooth(configPath);
         }
+        else if(config.hasOwnProperty('iroha')) {
+            var iroha = require('../iroha/iroha.js');
+            this.bcType = 'iroha';
+            this.bcObj = new iroha(configPath);
+        }
         else {
             this.bcType = 'unknown';
             throw new Error('Unknown blockchain config file ' + configPath);
@@ -48,6 +53,16 @@ var Blockchain = class {
     }
 
     /**
+    * create needed materials for multiple clients, e.g create account for each client and return the key pairs
+    * @number, number of clients
+    * @return {Promise}, array of generated JSON object for each client. The array length should be equal to the input number
+    *                    Each object should be passed to corresponding client and be used as a argument of getContext
+    */
+    createClients (number) {
+        return this.bcObj.createClients(number);
+    }
+
+    /**
     * install smart contract on peers
     * the detailed smart contract's information should be defined in the configuration file
     * @return {Promise}
@@ -59,10 +74,12 @@ var Blockchain = class {
     /**
     * get a system context that will be used to interact with backend's blockchain system
     * @name {string}, name of the context
+    * @args {object}, a JSON object that contains required materials for the client to interact with SUT, e.g key pairs for the client
+    *                 the actual format of the object is specified by each blochchain interface implementation
     * @return {Promise.resolve(context)}
     */
-    getContext(name) {
-        return this.bcObj.getContext(name);
+    getContext(name, args) {
+        return this.bcObj.getContext(name, args);
     }
 
     /**

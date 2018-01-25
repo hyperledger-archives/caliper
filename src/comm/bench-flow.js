@@ -72,6 +72,8 @@ var absCaliperDir = path.join(__dirname, '../..');
 * @config_path {string},path of the local configuration file
 */
 module.exports.run = function(configFile, networkFile) {
+    test("----------------", (t) => {
+    global.tapeObj = t;
     absConfigFile  = configFile;
     absNetworkFile = networkFile;
     blockchain = new Blockchain(absNetworkFile);
@@ -148,6 +150,7 @@ module.exports.run = function(configFile, networkFile) {
             end.stdout.pipe(process.stdout);
             end.stderr.pipe(process.stderr);
         }
+        t.end();
     })
     .catch( (err) => {
         demo.stopWatch();
@@ -159,6 +162,8 @@ module.exports.run = function(configFile, networkFile) {
             end.stdout.pipe(process.stdout);
             end.stderr.pipe(process.stderr);
         }
+        t.end();
+    });
     });
 }
 
@@ -209,98 +214,71 @@ function createReport() {
 */
 function defaultTest(args, final) {
     return new Promise( function(resolve, reject) {
-        var title = '\n\n**** End-to-end flow: testing \'' + args.label + '\' ****';
-        test(title, (t) => {
-            var testLabel   = args.label;
-            var testRounds  = args.txNumbAndTps;
-            var tests = []; // array of all test rounds
-            var configPath = path.relative(absCaliperDir, absNetworkFile);
-            for(let i = 0 ; i < testRounds.length ; i++) {
-                /*let txPerClient  = Math.floor(testRounds[i][0] / clientNum);
-                let tpsPerClient = Math.floor(testRounds[i][1] / clientNum);
-                if(txPerClient < 1) {
-                    txPerClient = 1;
+        var t = global.tapeObj;
+        t.comment('\n\n**** testing \'' + args.label + '\' ****');
+        var testLabel   = args.label;
+        var testRounds  = args.txNumbAndTps;
+        var tests = []; // array of all test rounds
+        var configPath = path.relative(absCaliperDir, absNetworkFile);
+        for(let i = 0 ; i < testRounds.length ; i++) {
+            let msg = {
+                          type: 'test',
+                          label : args.label,
+                          numb: testRounds[i][0],
+                          tps:  testRounds[i][1],
+                          args: args.arguments,
+                          cb  : args.callback,
+                          config: configPath
+                       };
+            /* obsoleted
+            for( let key in args.arguments) {
+                if(args.arguments[key] === "*#out") { // from previous cached data
+                    msg.args[key] = getCache(key);
                 }
-                if(tpsPerClient < 1) {
-                    tpsPerClient = 1;
-                }*/
-
-                let msg = {
-                              type: 'test',
-                              label : args.label,
-                              numb: testRounds[i][0],
-                              tps:  testRounds[i][1],
-                              args: args.arguments,
-                              cb  : args.callback,
-                              config: configPath
-                           };
-                /* obsoleted
-                for( let key in args.arguments) {
-                    if(args.arguments[key] === "*#out") { // from previous cached data
-                        msg.args[key] = getCache(key);
-                    }
-                }
-                if (args.hasOwnProperty('out')) {
-                    msg.out = args.out;
-                }*/
-                tests.push(msg);
             }
-            var testIdx = 0;
-            return tests.reduce( function(prev, item) {
-                return prev.then( () => {
-                    console.log('----test round ' + round + '----');
-                    round++;
-                    testIdx++;
-                   /* var children  = [];  // promises of child processes
-                    var processes = [];
-                    for(let i = 0 ; i < clientNum ; i++) {
-                        children.push(loadProcess(item, i, processes));
+            if (args.hasOwnProperty('out')) {
+                msg.out = args.out;
+            }*/
+            tests.push(msg);
+        }
+        var testIdx = 0;
+        return tests.reduce( function(prev, item) {
+            return prev.then( () => {
+                console.log('----test round ' + round + '----');
+                round++;
+                testIdx++;
+                demo.startWatch(client);
+
+                return client.startTest(item, demo.queryCB, processResult, testLabel)
+                .then( () => {
+                    demo.pauseWatch();
+                    t.pass('passed \'' + testLabel + '\' testing');
+                    return Promise.resolve();
+                })
+                .then( () => {
+                    if(final && testIdx === tests.length) {
+                        return Promise.resolve();
                     }
-                    demo.startWatch(processes);
-
-                    return Promise.all(children)
-                    .then( () => {
-                        demo.pauseWatch();
-                        t.pass('passed \'' + testLabel + '\' testing');
-                        processResult(testLabel, t);
-                        return Promise.resolve();
-                    })*/
-
-                    demo.startWatch(client);
-
-                    return client.startTest(item, demo.queryCB, processResult, testLabel)
-                    .then( () => {
-                        demo.pauseWatch();
-                        t.pass('passed \'' + testLabel + '\' testing');
-                        return Promise.resolve();
-                    })
-                    .then( () => {
-                        if(final && testIdx === tests.length) {
-                            return Promise.resolve();
-                        }
-                        else {
-                            console.log('wait 5 seconds for next round...');
-                            return sleep(5000).then( () => {
-                                return monitor.restart();
-                            })
-                        }
-                    })
-                    .catch( (err) => {
-                        demo.pauseWatch();
-                        t.fail('failed \''  + testLabel + '\' testing, ' + (err.stack ? err.stack : err));
-                        return Promise.resolve();   // continue with next round ?
-                    });
+                    else {
+                        console.log('wait 5 seconds for next round...');
+                        return sleep(5000).then( () => {
+                            return monitor.restart();
+                        })
+                    }
+                })
+                .catch( (err) => {
+                    demo.pauseWatch();
+                    t.fail('failed \''  + testLabel + '\' testing, ' + (err.stack ? err.stack : err));
+                    return Promise.resolve();   // continue with next round ?
                 });
-            }, Promise.resolve())
-            .then( () => {
-                t.end();
-                return resolve();
-            })
-            .catch( (err) => {
-                t.fail(err.stack ? err.stack : err);
-                t.end();
-                return reject(new Error('defaultTest failed'));
             });
+        }, Promise.resolve())
+        .then( () => {
+            return resolve();
+        })
+        .catch( (err) => {
+            t.fail(err.stack ? err.stack : err);
+            return reject(new Error('defaultTest failed'));
         });
     });
 }

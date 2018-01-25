@@ -120,14 +120,13 @@ var	tlsOptions = {
 	verify: false
 };
 
-function getMember(username, password, client, t, userOrg) {
+function getMember(username, password, client, userOrg) {
 	var caUrl = ORGS[userOrg].ca.url;
 
 	return client.getUserContext(username, true)
 	.then((user) => {
 		return new Promise((resolve, reject) => {
 			if (user && user.isEnrolled()) {
-//				t.pass('Successfully loaded member from persistence');
 				return resolve(user);
 			}
 
@@ -149,8 +148,6 @@ function getMember(username, password, client, t, userOrg) {
 				enrollmentID: username,
 				enrollmentSecret: password
 			}).then((enrollment) => {
-//				t.pass('Successfully enrolled user \'' + username + '\'');
-
 				return member.setEnrollment(enrollment.key, enrollment.certificate, ORGS[userOrg].mspid);
 			}).then(() => {
 				var skipPersistence = false;
@@ -161,8 +158,6 @@ function getMember(username, password, client, t, userOrg) {
 			}).then(() => {
 				return resolve(member);
 			}).catch((err) => {
-//				t.fail('Failed to enroll and persist user. Error: ' + err.stack ? err.stack : err);
-//				t.end();
                 // TODO: will remove t argument later
                 console.log('Failed to enroll and persist user. Error: ' + (err.stack ? err.stack : err));
 			});
@@ -170,7 +165,7 @@ function getMember(username, password, client, t, userOrg) {
 	});
 }
 
-function getAdmin(client, t, userOrg) {
+function getAdmin(client, userOrg) {
     // TODO: now the path format is hard-coded, shoule be defined in config file?
 	var keyPath = path.join(__dirname, util.format('../../%s/peerOrganizations/%s.example.com/users/Admin@%s.example.com/keystore', cryptodir, userOrg, userOrg));
 	if(!fs.existsSync(keyPath)) {
@@ -199,7 +194,7 @@ function getAdmin(client, t, userOrg) {
 	}));
 }
 
-function getOrdererAdmin(client, t) {
+function getOrdererAdmin(client) {
 	var keyPath = path.join(__dirname, util.format('../../%s/ordererOrganizations/example.com/users/Admin@example.com/keystore', cryptodir));
 	if(!fs.existsSync(keyPath)) {
 	    keyPath = path.join(__dirname, util.format('../../%s/ordererOrganizations/example.com/users/Admin@example.com/msp/keystore', cryptodir));
@@ -243,11 +238,11 @@ function readAllFiles(dir) {
 	return certs;
 }
 
-module.exports.getOrderAdminSubmitter = function(client, test) {
-	return getOrdererAdmin(client, test);
+module.exports.getOrderAdminSubmitter = function(client) {
+	return getOrdererAdmin(client);
 };
 
-module.exports.getSubmitter = function(client, test, peerOrgAdmin, org) {
+module.exports.getSubmitter = function(client, peerOrgAdmin, org) {
 	if (arguments.length < 2) throw new Error('"client" and "test" are both required parameters');
 
 	var peerAdmin, userOrg;
@@ -269,8 +264,8 @@ module.exports.getSubmitter = function(client, test, peerOrgAdmin, org) {
 	}
 
 	if (peerAdmin) {
-		return getAdmin(client, test, userOrg);
+		return getAdmin(client, userOrg);
 	} else {
-		return getMember('admin', 'adminpw', client, test, userOrg);
+		return getMember('admin', 'adminpw', client, userOrg);
 	}
 };

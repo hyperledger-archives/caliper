@@ -99,7 +99,8 @@ function removeChildren(zookeeper, path, errLog) {
             })
             .catch((err)=>{
                 console.log(errLog);
-                return Promise.reject(err);
+                console.log(err);
+                return Promise.resolve();
             });
 }
 module.exports.removeChildrenP = removeChildren;

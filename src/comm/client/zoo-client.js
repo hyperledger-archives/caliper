@@ -118,9 +118,6 @@ function finish() {
 }
 
 function clear() {
-    // test
-    console.log("invoke here!!!");
-
     var promises = [];
     if(inNode !== '') {
         promises.push(zkUtil.removeChildrenP(zk, inNode, 'Failed to remove children due to'));

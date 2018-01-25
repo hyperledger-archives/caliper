@@ -39,26 +39,25 @@ module.exports.run = function (config_path) {
     }
 
     return new Promise(function(resolve, reject) {
-        test('\n\n***** instantiate chaincode *****\n\n', (t) => {
-            chaincodes.reduce(function(prev, chaincode){
-                return prev.then(() => {
-                    return e2eUtils.instantiateChaincode(chaincode, policy, false, t).then(() => {
-                        t.pass('Instantiated chaincode ' + chaincode.id + ' successfully ');
-                        t.comment('Sleep 5s...');
-                        return sleep(5000);
-                    });
+        // test('\n\n***** instantiate chaincode *****\n\n', (t) => {
+        var t = global.tapeObj;
+        t.comment('Instantiate chaincode......');
+        chaincodes.reduce(function(prev, chaincode){
+            return prev.then(() => {
+                return e2eUtils.instantiateChaincode(chaincode, policy, false).then(() => {
+                    t.pass('Instantiated chaincode ' + chaincode.id + ' successfully ');
+                    t.comment('Sleep 5s...');
+                    return sleep(5000);
                 });
-            }, Promise.resolve())
-            .then(() => {
-                t.end();
-                return resolve();
-            })
-            .catch((err) => {
-                t.pass('Failed to instantiate chaincodes, ' + (err.stack?err.stack:err));
-                t.end();
-                return reject(new Error('Fabric: Create channel failed'));
             });
-        });
+        }, Promise.resolve())
+        .then(() => {
+            return resolve();
+        })
+        .catch((err) => {
+            t.pass('Failed to instantiate chaincodes, ' + (err.stack?err.stack:err));
+            return reject(new Error('Fabric: Create channel failed'));
+         });
     });
 };
 

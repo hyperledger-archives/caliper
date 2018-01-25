@@ -9,7 +9,7 @@
 
 'use strict'
 
-module.exports.factory = {
+module.exports.contracts = {
     simple : simple
 };
 

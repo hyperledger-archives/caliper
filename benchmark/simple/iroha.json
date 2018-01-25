@@ -1,23 +1,21 @@
 {
   "iroha": {
-    "user" :{
-        "admin@test": {
-          "key-pub":"network/iroha/simplenetwork/admin@test.pub",
-          "key-priv":"network/iroha/simplenetwork/admin@test.priv"
-        }
+    "admin" :{
+      "account":"admin",
+      "domain" : "test",
+      "key-pub":"network/iroha/simplenetwork/admin@test.pub",
+      "key-priv":"network/iroha/simplenetwork/admin@test.priv"
     },
     "network": {
       "node0": {
-        "torii": "localhost:50051",
-        "test-user": "admin@test"
+        "torii": "localhost:50051"
       },
       "node1": {
-        "torii": "localhost:50052",
-        "test-user": "admin@test"
+        "torii": "localhost:50052"
       }
     },
     "fakecontract": [
-      {"factory": "contract/fabric/simple/factory.js", "id":["simple"]}
+      {"factory": "src/contract/iroha/simple/factory.js", "id":["simple"]}
     ]
   },
   "info" : {

@@ -20,10 +20,6 @@
 var utils = require('fabric-client/lib/utils.js');
 var logger = utils.getLogger('E2E testing');
 
-var tape = require('tape');
-var _test = require('tape-promise');
-var test = _test(tape);
-
 var path = require('path');
 var fs = require('fs');
 var util = require('util');
@@ -48,9 +44,8 @@ module.exports.init = init;
 /*********************
 * @org, key of the organization
 * @chaincode, {id: ..., path: ..., version: ...}
-* @t, tape object
 *********************/
-function installChaincode(org, chaincode, t) {
+function installChaincode(org, chaincode) {
 	Client.setConfigSetting('request-timeout', 60000);
 	var channel_name = chaincode.channel;
 
@@ -101,7 +96,7 @@ function installChaincode(org, chaincode, t) {
 		client.setStateStore(store);
 
 		// get the peer org's admin required to send install chaincode requests
-		return testUtil.getSubmitter(client, t, true /* get peer org admin */, org);
+		return testUtil.getSubmitter(client, true /* get peer org admin */, org);
 	}).then((admin) => {
 		the_user = admin;
 
@@ -140,14 +135,21 @@ function installChaincode(org, chaincode, t) {
 		throw new Error('Failed to send install proposal due to error: ' + (err.stack ? err.stack : err));
 	})
 	.catch((err) => {
-	    t.fail('failed to install chaincode, ' + (err.stack ? err.stack : err));
 	    return Promise.reject(err);
 	});
 }
 module.exports.installChaincode = installChaincode;
 
+function disconnect(ehs) {
+    for(var key in ehs) {
+        var eventhub = ehs[key];
+        if (eventhub && eventhub.isconnected()) {
+            eventhub.disconnect();
+        }
+    }
+};
 
-function instantiateChaincode(chaincode, endorsement_policy, upgrade, t){
+function instantiateChaincode(chaincode, endorsement_policy, upgrade){
 	Client.setConfigSetting('request-timeout', 120000);
 
     var channel = testUtil.getChannel(chaincode.channel);
@@ -161,20 +163,6 @@ function instantiateChaincode(chaincode, endorsement_policy, upgrade, t){
 		eventhubs = [];
 	var type = 'instantiate';
 	if(upgrade) type = 'upgrade';
-	// override t.end function so it'll always disconnect the event hub
-	t.end = ((context, ehs, f) => {
-		return function() {
-			for(var key in ehs) {
-				var eventhub = ehs[key];
-				if (eventhub && eventhub.isconnected()) {
-					logger.debug('Disconnecting the event hub');
-					eventhub.disconnect();
-				}
-			}
-			f.apply(context, arguments);
-		};
-	})(t, eventhubs, t.end);
-
 	var client  = new Client();
 	var channel = client.newChannel(channel_name);
 
@@ -205,11 +193,12 @@ function instantiateChaincode(chaincode, endorsement_policy, upgrade, t){
 	}).then((store) => {
 
 		client.setStateStore(store);
-		return testUtil.getSubmitter(client, t, true /* use peer org admin*/, userOrg);
+		return testUtil.getSubmitter(client, true /* use peer org admin*/, userOrg);
 
 	}).then((admin) => {
 		the_user = admin;
 
+        let eventPeer = null;
 		for(let org in ORGS) {
 		    if(org.indexOf('org') === 0) {
 		        for (let key in ORGS[org]) {
@@ -224,20 +213,24 @@ function instantiateChaincode(chaincode, endorsement_policy, upgrade, t){
 		                );
 		                targets.push(peer);
 		                channel.addPeer(peer);
+
+		                if(org === userOrg && !eventPeer) {
+		                    eventPeer = key;
+		                }
 		            }
 		        }
 		    }
 		}
 
 		// an event listener can only register with a peer in its own org
-		logger.debug(' create new eventhub %s', ORGS[userOrg]['peer1'].events);
-		let data = fs.readFileSync(path.join(__dirname, rootPath, ORGS[userOrg]['peer1']['tls_cacerts']));
+		logger.debug(' create new eventhub %s', ORGS[userOrg][eventPeer].events);
+		let data = fs.readFileSync(path.join(__dirname, rootPath, ORGS[userOrg][eventPeer]['tls_cacerts']));
 		let eh = client.newEventHub();
 		eh.setPeerAddr(
-			ORGS[userOrg]['peer1'].events,
+			ORGS[userOrg][eventPeer].events,
 			{
 				pem: Buffer.from(data).toString(),
-				'ssl-target-name-override': ORGS[userOrg]['peer1']['server-hostname']
+				'ssl-target-name-override': ORGS[userOrg][eventPeer]['server-hostname']
 			}
 		);
 		eh.connect();
@@ -304,10 +297,10 @@ function instantiateChaincode(chaincode, endorsement_policy, upgrade, t){
 						eh.unregisterTxEvent(deployId);
 
 						if (code !== 'VALID') {
-							t.fail('The chaincode ' + type + ' transaction was invalid, code = ' + code);
+						    console.log('The chaincode ' + type + ' transaction was invalid, code = ' + code);
 							reject();
 						} else {
-							t.pass('The chaincode ' + type + ' transaction was valid.');
+						    console.log('The chaincode ' + type + ' transaction was valid.');
 							resolve();
 						}
 					});
@@ -340,8 +333,12 @@ function instantiateChaincode(chaincode, endorsement_policy, upgrade, t){
 	}, (err) => {
 		throw new Error('Failed to send instantiate due to error: ' + (err.stack ? err.stack : err));
 	})
+	.then(()=>{
+	    disconnect(eventhubs);
+	    return Promise.resolve();
+	})
 	.catch((err) => {
-	    t.fail('failed to instantiate chaincode, ' + (err.stack ? err.stack : err));
+	    disconnect(eventhubs);
 	    return Promise.reject(err);
 	});
 };
@@ -427,7 +424,7 @@ function getcontext(channelConfig) {
 		if (store) {
 			client.setStateStore(store);
 		}
-		return testUtil.getSubmitter(client, null, true, userOrg);
+		return testUtil.getSubmitter(client, true, userOrg);
 	}).then((admin) => {
 		the_user = admin;
 

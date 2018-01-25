@@ -45,7 +45,7 @@ class Fabric extends BlockchainInterface{
         });
     }
 
-    getContext(name) {
+    getContext(name, args) {
         util.init(this.configPath);
         e2eUtils.init(this.configPath);
 

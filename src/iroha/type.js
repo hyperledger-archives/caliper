@@ -9,7 +9,7 @@
 
 'use strict'
 
-module.exports.Transactions = {
+var txType =  {
     ADD_ASSET_QUANTITY : 1,
     ADD_PEER : 2,
     ADD_SIGATORY : 3,
@@ -27,4 +27,15 @@ module.exports.Transactions = {
     SUBTRACT_ASSET_QUANTITY : 15,
     TRANSFER_ASSET : 16
 };
+
+module.exports.txType = txType;
+
+module.exports.getTxTypeName = function (type) {
+    for(let key in txType) {
+        if(txType[key] === type) {
+            return key;
+        }
+    }
+    return 'unknown';
+}
 

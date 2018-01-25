@@ -44,121 +44,116 @@ function run(config_path) {
             return Promise.resolve();
         }
 
-        test('\n\n***** create channels  *****\n\n', function(t) {
-            var ORGS = fabric.network;
-            var caRootsPath = ORGS.orderer.tls_cacerts;
-            var data = fs.readFileSync(path.join(__dirname, '../..', caRootsPath));
-            var caroots = Buffer.from(data).toString();
-            utils.setConfigSetting('key-value-store', 'fabric-client/lib/impl/FileKeyValueStore.js');
+        var t = global.tapeObj;
+        var ORGS = fabric.network;
+        var caRootsPath = ORGS.orderer.tls_cacerts;
+        var data = fs.readFileSync(path.join(__dirname, '../..', caRootsPath));
+        var caroots = Buffer.from(data).toString();
+        utils.setConfigSetting('key-value-store', 'fabric-client/lib/impl/FileKeyValueStore.js');
 
-            return channels.reduce((prev, channel)=>{
-                return prev.then(()=>{
-                    if(channel.deployed) {
-                        return Promise.resolve();
+        return channels.reduce((prev, channel)=>{
+            return prev.then(()=>{
+                if(channel.deployed) {
+                    return Promise.resolve();
+                }
+
+                t.comment('create ' + channel.name + '......');
+
+                // Acting as a client in first org when creating the channel
+                let client = new Client();
+                let org = channel.organizations[0];
+                let orderer = client.newOrderer(
+                    ORGS.orderer.url,
+                    {
+                        'pem': caroots,
+                        'ssl-target-name-override': ORGS.orderer['server-hostname']
                     }
+                );
 
-                    t.comment('create ' + channel.name + '......');
+                let config = null;
+                let signatures = [];
 
-                    // Acting as a client in first org when creating the channel
-                    let client = new Client();
-                    let org = channel.organizations[0];
-                    let orderer = client.newOrderer(
-                        ORGS.orderer.url,
-                        {
-                            'pem': caroots,
-                            'ssl-target-name-override': ORGS.orderer['server-hostname']
-                        }
-                    );
-
-                    let config = null;
-                    let signatures = [];
-
-                    return Client.newDefaultKeyValueStore({
-                        path: testUtil.storePathForOrg(org)
-                    })
-                    .then((store) => {
-                        client.setStateStore(store);
-                        var cryptoSuite = Client.newCryptoSuite();
-                        cryptoSuite.setCryptoKeyStore(Client.newCryptoKeyStore({path: testUtil.storePathForOrg(org)}));
-                        client.setCryptoSuite(cryptoSuite);
-                        return testUtil.getOrderAdminSubmitter(client, t);
-                    })
-                    .then((admin) =>{
-                        // use the config update created by the configtx tool
-                        let envelope_bytes = fs.readFileSync(path.join(__dirname, '../..', channel.config));
-                        config = client.extractChannelConfig(envelope_bytes);
-
-                        // TODO: read from channel config instead of binary tx file
-
-                        // sign the config for each org
-                        return channel.organizations.reduce(function(prev, item){
-                            return prev.then(() => {
-                                client._userContext = null;
-                                return testUtil.getSubmitter(client, t, true, item).then((orgAdmin) =>{
-                                    // sign the config
-                                    let signature = client.signChannelConfig(config);
-                                    // TODO: signature counting against policies on the orderer
-                                    // at the moment is being investigated, but it requires this
-                                    // weird double-signature from each org admin
-                                    signatures.push(signature);
-                                    signatures.push(signature);
-                                    return Promise.resolve();
-                                });
-                            })
-                        }, Promise.resolve())
-                        .then(()=>{
-                            client._userContext = null;
-                            return testUtil.getOrderAdminSubmitter(client, t);
-                        })
-                        .then((orderAdmin) => {
-                            // sign the config
-                            var signature = client.signChannelConfig(config);
-
-                            // collect signature from orderer admin
-                            // TODO: signature counting against policies on the orderer
-                            // at the moment is being investigated, but it requires this
-                            // weird double-signature from each org admin
-                            signatures.push(signature);
-                            signatures.push(signature);
-
-                            // build up the create request
-                            let tx_id = client.newTransactionID();
-                            var request = {
-                                config: config,
-                                signatures : signatures,
-                                name : channel.name,
-                                orderer : orderer,
-                                txId  : tx_id
-                            };
-
-                            // send create request to orderer
-                            return client.createChannel(request);
-                        })
-                        .then((result) => {
-                            if(result.status && result.status === 'SUCCESS') {
-                                t.pass('created ' + channel.name + ' successfully');
-                                return Promise.resolve();
-                            }
-                            else {
-                                throw new Error('create status is ' + result.status);
-                            }
-                        });
-                    })
+                return Client.newDefaultKeyValueStore({
+                    path: testUtil.storePathForOrg(org)
                 })
-            }, Promise.resolve())
-            .then(()=>{
-                t.comment('Sleep 5s......');
-                return e2eUtils.sleep(5000);
+                .then((store) => {
+                    client.setStateStore(store);
+                    var cryptoSuite = Client.newCryptoSuite();
+                    cryptoSuite.setCryptoKeyStore(Client.newCryptoKeyStore({path: testUtil.storePathForOrg(org)}));
+                    client.setCryptoSuite(cryptoSuite);
+                    return testUtil.getOrderAdminSubmitter(client);
+                })
+                .then((admin) =>{
+                    // use the config update created by the configtx tool
+                    let envelope_bytes = fs.readFileSync(path.join(__dirname, '../..', channel.config));
+                    config = client.extractChannelConfig(envelope_bytes);
+
+                    // TODO: read from channel config instead of binary tx file
+
+                    // sign the config for each org
+                    return channel.organizations.reduce(function(prev, item){
+                        return prev.then(() => {
+                            client._userContext = null;
+                            return testUtil.getSubmitter(client, true, item).then((orgAdmin) =>{
+                                // sign the config
+                                let signature = client.signChannelConfig(config);
+                                // TODO: signature counting against policies on the orderer
+                                // at the moment is being investigated, but it requires this
+                                // weird double-signature from each org admin
+                                signatures.push(signature);
+                                signatures.push(signature);
+                                return Promise.resolve();
+                            });
+                        })
+                    }, Promise.resolve())
+                    .then(()=>{
+                        client._userContext = null;
+                        return testUtil.getOrderAdminSubmitter(client);
+                    })
+                    .then((orderAdmin) => {
+                        // sign the config
+                        var signature = client.signChannelConfig(config);
+                        // collect signature from orderer admin
+                        // TODO: signature counting against policies on the orderer
+                        // at the moment is being investigated, but it requires this
+                        // weird double-signature from each org admin
+                        signatures.push(signature);
+                        signatures.push(signature);
+                         // build up the create request
+                        let tx_id = client.newTransactionID();
+                        var request = {
+                            config: config,
+                            signatures : signatures,
+                            name : channel.name,
+                            orderer : orderer,
+                            txId  : tx_id
+                        };
+
+                        // send create request to orderer
+                        return client.createChannel(request);
+                    })
+                    .then((result) => {
+                        if(result.status && result.status === 'SUCCESS') {
+                            t.pass('created ' + channel.name + ' successfully');
+                            return Promise.resolve();
+                        }
+                        else {
+                            throw new Error('create status is ' + result.status);
+                        }
+                    });
+                })
             })
-            .then(() => {
-                t.end();
-                return resolve();
-            })
-            .catch((err) => {
-                t.fail('Failed to create channels ' + (err.stack?err.stack:err));
-                t.end();
-                return reject(new Error('Fabric: Create channel failed'));
-            });
+        }, Promise.resolve())
+        .then(()=>{
+            t.comment('Sleep 5s......');
+            return e2eUtils.sleep(5000);
+        })
+        .then(() => {
+            return resolve();
+        })
+       .catch((err) => {
+            t.fail('Failed to create channels ' + (err.stack?err.stack:err));
+            return reject(new Error('Fabric: Create channel failed'));
         });
     });
 }

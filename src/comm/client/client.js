@@ -14,6 +14,7 @@ const CLIENT_ZOO   = 'zookeeper';
 var zkUtil  = require('./zoo-util.js');
 var ZooKeeper = require('node-zookeeper-client');
 var clientUtil = require('./client-util.js');
+var sleep = require('../sleep.js');
 var Client = class {
     constructor(config, callback) {
         var conf = require(config);
@@ -36,7 +37,7 @@ var Client = class {
                     else {
                         this.number = 1;
                     }
-                    break;
+                    return Promise.resolve();
                 case CLIENT_ZOO:
                     return this._initZoo();
                 default:
@@ -188,20 +189,17 @@ var Client = class {
         });
         this.zoo.zk = zk;
         var zoo = this.zoo;
-        // test var p = new Promise((resolve, reject) => {
-        this.zoo.p = new Promise((resolve, reject) => {
-            zoo.connectHandle = setTimeout(()=>{
-                reject('Could not connect to ZooKeeper');
-            }, TIMEOUT+100);
+        var connectHandle = setTimeout(()=>{
+                                console.log('Could not connect to ZooKeeper');
+                                reject('Could not connect to ZooKeeper');
+                            }, TIMEOUT+100);
+        var p = new Promise((resolve, reject) => {
+        //this.zoo.p = new Promise((resolve, reject) => {
             zk.once('connected', () => {
                 console.log('Connected to ZooKeeper');
-
+                clearTimeout(connectHandle);
                 zkUtil.existsP(zk, zkUtil.NODE_CLIENT, 'Failed to find clients due to')
                 .then((found)=>{
-                    if(zoo.connectHandle) {
-                        clearTimeout(zoo.connectHandle);
-                        zoo.connectHandle = null;
-                    }
                     if(!found) {
                         // since zoo-client(s) should create the node if it does not exist,no caliper node means no valid zoo-client now.
                         throw new Error('Could not found clients node in zookeeper');
@@ -218,7 +216,7 @@ var Client = class {
                     console.log('get zookeeper clients:' + clients);
                     for (let i = 0 ; i < clients.length ; i++) {
                         let clientID = clients[i];
-                        this.zoo.hosts.push({
+                        zoo.hosts.push({
                             id: clientID,
                             innode: zkUtil.getInNode(clientID),
                             outnode:zkUtil.getOutNode(clientID)
@@ -232,66 +230,60 @@ var Client = class {
                 });
             });
         });
-
         console.log('Connecting to ZooKeeper......');
         zk.connect();
-        return Promise.resolve();
-        //return this.zoo.p;
+        return p;
     }
 
     _startZooTest(message, queryCB) {
-        return this.zoo.p.then(() => {
-            var number = this.zoo.hosts.length;
-            var txPerClient  = Math.floor(message.numb / number);
-            var tpsPerClient = Math.floor(message.tps / number);
-            if(txPerClient < 1) {
-                txPerClient = 1;
-            }
-            if(tpsPerClient < 1) {
-                tpsPerClient = 1;
-            }
-            message.numb = txPerClient;
-            message.tps  = tpsPerClient;
-            message['clients'] = this.zoo.clientsPerHost;
-            return this._sendZooMessage(message)
-        })
-        .then((number)=>{
-            if(number > 0) {
-                return zooStartWatch(this.zoo, queryCB, number, this.results);
-            }
-            else {
-                return Promise.reject(new Error('Failed to start the remote test'));
-            }
-        })
-        .catch((err)=>{
-            console.log('Failed to start the remote test');
-            return Promise.reject(err);
-        });
+        var number = this.zoo.hosts.length;
+        var txPerClient  = Math.floor(message.numb / number);
+        var tpsPerClient = Math.floor(message.tps / number);
+        if(txPerClient < 1) {
+            txPerClient = 1;
+        }
+        if(tpsPerClient < 1) {
+            tpsPerClient = 1;
+        }
+        message.numb = txPerClient;
+        message.tps  = tpsPerClient;
+        message['clients'] = this.zoo.clientsPerHost;
+        return this._sendZooMessage(message)
+                .then((number)=>{
+                    if(number > 0) {
+                        return zooStartWatch(this.zoo, queryCB, number, this.results);
+                    }
+                    else {
+                        return Promise.reject(new Error('Failed to start the remote test'));
+                    }
+                })
+                .catch((err)=>{
+                    console.log('Failed to start the remote test');
+                    return Promise.reject(err);
+                });
     }
 
     _sendZooMessage(message) {
-        return this.zoo.p.then(() => {
-            var promises = [];
-            var succ = 0;
+        var promises = [];
+        var succ = 0;
 
-            var data = new Buffer(JSON.stringify(message));
+        var data = new Buffer(JSON.stringify(message));
 
-            this.zoo.hosts.forEach((host)=>{
-                let p = zkUtil.createP(this.zoo.zk, host.innode+'/msg_', data, ZooKeeper.CreateMode.EPHEMERAL_SEQUENTIAL, 'Failed to send message (create node) due to')
-                        .then((path)=>{
-                            succ++;
-                            return Promise.resolve();
-                        })
-                        .catch((err)=>{
-                            return Promise.resolve();
-                        });
-                promises.push(p);
-            });
-            return Promise.all(promises)
-            .then(()=>{
-                return Promise.resolve(succ);
-            });
+        this.zoo.hosts.forEach((host)=>{
+            let p = zkUtil.createP(this.zoo.zk, host.innode+'/msg_', data, ZooKeeper.CreateMode.EPHEMERAL_SEQUENTIAL, 'Failed to send message (create node) due to')
+                    .then((path)=>{
+                        succ++;
+                        return Promise.resolve();
+                    })
+                    .catch((err)=>{
+                        return Promise.resolve();
+                    });
+            promises.push(p);
         });
+        return Promise.all(promises)
+                .then(()=>{
+                    return Promise.resolve(succ);
+                });
     }
 
     _stopZoo() {
