@@ -250,7 +250,7 @@ var Client = class {
         return this._sendZooMessage(message)
                 .then((number)=>{
                     if(number > 0) {
-                        return zooStartWatch(this.zoo, queryCB, number, this.results);
+                        return zooStartWatch(this.zoo, queryCB, this.results);
                     }
                     else {
                         return Promise.reject(new Error('Failed to start the remote test'));
@@ -357,13 +357,11 @@ function zooMessageCallback(data, queryCB, results) {
     return Promise.resolve(stop);
 }
 
-function zooStartWatch(zoo, queryCB, numOfTermin, results) {
+function zooStartWatch(zoo, queryCB, results) {
     var promises = [];
-    var loop = numOfTermin;
     var zk   = zoo.zk;
     zoo.hosts.forEach((host)=>{
         let path = host.outnode;
-        let lastnode = null;
         let p = zkUtil.watchMsgQueueP(
                     zk,
                     path,

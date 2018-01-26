@@ -72,7 +72,7 @@ var absCaliperDir = path.join(__dirname, '../..');
 * @config_path {string},path of the local configuration file
 */
 module.exports.run = function(configFile, networkFile) {
-    test("----------------", (t) => {
+    test("#######Caliper Test######", (t) => {
         global.tapeObj = t;
         absConfigFile  = configFile;
         absNetworkFile = networkFile;
@@ -217,7 +217,7 @@ function createReport() {
 function defaultTest(args, final) {
     return new Promise( function(resolve, reject) {
         var t = global.tapeObj;
-        t.comment('\n\n**** testing \'' + args.label + '\' ****');
+        t.comment('\n\n###### testing \'' + args.label + '\' ######');
         var testLabel   = args.label;
         var testRounds  = args.txNumbAndTps;
         var tests = []; // array of all test rounds

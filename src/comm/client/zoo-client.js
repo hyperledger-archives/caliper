@@ -178,7 +178,7 @@ function zooMessageCallback(data) {
 }
 
 function watch() {
-    zkUtil.watchMsgQueueP(
+    return zkUtil.watchMsgQueueP(
         zk,
         inNode,
         (data) => {
@@ -191,7 +191,8 @@ function watch() {
         },
         'Failed to watch children nodes in zookeeper'
     ).catch((err) => {
-        return;
+        console.log(err);
+        return Promise.resolve();
     })
 }
 
@@ -236,7 +237,7 @@ zk.once('connected', function() {
     .then((outPath)=>{
         console.log('Created sending queue at:'+outPath);
         console.log('Waiting for messages at:'+inNode+'......');
-        watch();
+        return watch();
     })
     .catch((err)=> {
         console.log(err.stack ? err.stack : err);
