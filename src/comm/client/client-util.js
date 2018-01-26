@@ -33,19 +33,26 @@ function pushResult(pid, data) {
     }
 }
 
-function queryCallback(pid, session, data) {
+function pushUpdate(pid, data) {
     var p = processes[pid];
-    if(p && p.queryCB && typeof p.queryCB !== 'undefined') {
-        p.queryCB(session, data);
+    if(p && p.updates && typeof p.updates !== 'undefined') {
+        p.updates.push(data);
     }
 }
 
-function launchClient(message, queryCB, results) {
+function updateCallback(pid, session, data) {
+    var p = processes[pid];
+    if(p && p.updateCB && typeof p.updateCB !== 'undefined') {
+        p.updateCB(session, data);
+    }
+}
+
+function launchClient(message, updateCB, results) {
     var path = require('path');
     var childProcess = require('child_process');
     var child = childProcess.fork(path.join(__dirname, 'local-client.js'));
     var pid   = child.pid.toString();
-    processes[pid] = {obj: child, results: results, queryCB: queryCB};
+    processes[pid] = {obj: child, results: results, updateCB: updateCB};
 
     child.on('message', function(msg) {
         if(msg.type === 'testResult') {
@@ -55,8 +62,8 @@ function launchClient(message, queryCB, results) {
         else if(msg.type === 'error') {
             setPromise(pid, false, new Error('Client encountered error:' + msg.data));
         }
-        else if(msg.type === 'queryResult') {
-            queryCallback(pid, msg.session, msg.data);
+        else if(msg.type === 'txUpdated') {
+            pushUpdate(pid, msg.data);
         }
     });
 
@@ -70,7 +77,7 @@ function launchClient(message, queryCB, results) {
     });
 }
 
-function startTest(number, message, queryCB, results) {
+function startTest(number, message, updates, results) {
     var count = 0;
     for (var i in processes) {
         count++;
@@ -98,7 +105,7 @@ function startTest(number, message, queryCB, results) {
             });
             promises.push(p);
             client['results'] = results;
-            client['queryCB'] = queryCB;
+            client['updates'] = updates;
             client.obj.send(message);
         }
 
@@ -119,11 +126,11 @@ function startTest(number, message, queryCB, results) {
     // launch clients
     processes = {};
     for(let i = 0 ; i < number ; i++) {
-        launchClient(message, queryCB, results);
+        launchClient(message, updates, results);
     }
 
     // start test
-    return startTest(number, message, queryCB, results);
+    return startTest(number, message, updates, results);
 }
 module.exports.startTest = startTest;
 

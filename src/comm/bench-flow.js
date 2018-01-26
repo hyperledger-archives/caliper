@@ -251,7 +251,7 @@ function defaultTest(args, final) {
                 testIdx++;
                 demo.startWatch(client);
 
-                return client.startTest(item, demo.queryCB, processResult, testLabel)
+                return client.startTest(item, processResult, testLabel)
                 .then( () => {
                     demo.pauseWatch();
                     t.pass('passed \'' + testLabel + '\' testing');
@@ -341,18 +341,23 @@ function defaultTest(args, final) {
 // TODO: should be moved to a dependent 'analyser' module in which to do all result analysing work
 function processResult(results, opt){
     try{
-        Blockchain.mergeDefaultTxStats(results);
-        var r = results[0];
-        /*for(let i = 0 ; i < r.out.length ; i++) {
-            putCache(r.out[i]);
-        }*/
-        r['opt'] = opt;
-
-        resultsbyround.push(r);
-
         var resultTable = [];
         resultTable[0] = getResultTitle();
-        resultTable[1] = getResultValue(r);
+        var r;
+        if(Blockchain.mergeDefaultTxStats(results) === 0) {
+            r = Blockchain.createNullDefaultTxStats;
+            r['opt'] = opt;
+        }
+        else {
+             r = results[0];
+            /*for(let i = 0 ; i < r.out.length ; i++) {
+                putCache(r.out[i]);
+            }*/
+            r['opt'] = opt;
+            resultTable[1] = getResultValue(r);
+        }
+
+        resultsbyround.push(r);
         console.log('###test result:###');
         printTable(resultTable);
         var idx = report.addBenchmarkRound(opt);

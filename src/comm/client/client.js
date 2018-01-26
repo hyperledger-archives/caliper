@@ -19,7 +19,8 @@ var Client = class {
     constructor(config, callback) {
         var conf = require(config);
         this.config = conf.test.clients;
-        this.results = [];           // output of recent test round
+        this.results = [];                          // output of recent test round
+        this.updates = {id:0, data:[]};           // contains txUpdated messages
     }
 
     /**
@@ -67,14 +68,17 @@ var Client = class {
     * @args{any}, args that should be passed to finishCB, the callback is invoke as finishCB(this.results, args)
     * @return {Promise}
     */
-    startTest(message, queryCB, finishCB, args) {
+    startTest(message, finishCB, args) {
         var p;
+        this.results = [];
+        this.updates.data = [];
+        this.updates.id++;
         switch(this.type) {
             case CLIENT_LOCAL:
-                p = this._startLocalTest(message, queryCB);
+                p = this._startLocalTest(message);
                 break;
             case CLIENT_ZOO:
-                 p = this._startZooTest(message, queryCB);
+                 p = this._startZooTest(message);
                  break;
             default:
                 return Promise.reject(new Error('Unknown client type: ' + this.type));
@@ -83,11 +87,9 @@ var Client = class {
             return finishCB(this.results, args);
         })
         .then(()=>{
-            this.results = [];
             return Promise.resolve();
         })
         .catch((err)=>{
-            this.results = [];
             return Promise.reject(err);
         })
     }
@@ -122,7 +124,11 @@ var Client = class {
             default:
                 ; // nothing to do
         }
-        this.results = [];
+    }
+
+
+    getUpdates() {
+        return this.updates;
     }
 
 
@@ -133,8 +139,8 @@ var Client = class {
     /**
     * functions for CLIENT_LOCAL
     */
-    _startLocalTest(message, queryCB) {
-        return clientUtil.startTest(this.number, message,queryCB, this.results);
+    _startLocalTest(message) {
+        return clientUtil.startTest(this.number, message,this.updates.data, this.results);
     }
 
     _sendLocalMessage(message) {
@@ -234,7 +240,7 @@ var Client = class {
         return p;
     }
 
-    _startZooTest(message, queryCB) {
+    _startZooTest(message) {
         var number = this.zoo.hosts.length;
         var txPerClient  = Math.floor(message.numb / number);
         var tpsPerClient = Math.floor(message.tps / number);
@@ -250,7 +256,7 @@ var Client = class {
         return this._sendZooMessage(message)
                 .then((number)=>{
                     if(number > 0) {
-                        return zooStartWatch(this.zoo, queryCB, this.results);
+                        return zooStartWatch(this.zoo, this.updates.data,  this.results);
                     }
                     else {
                         return Promise.reject(new Error('Failed to start the remote test'));
@@ -333,7 +339,7 @@ module.exports = Client;
             return Promise.resolve(stop);
         });
 }*/
-function zooMessageCallback(data, queryCB, results) {
+function zooMessageCallback(data, updates, results) {
     var msg  = JSON.parse(data.toString());
     var stop = false;
     switch(msg.type) {
@@ -345,8 +351,8 @@ function zooMessageCallback(data, queryCB, results) {
             console.log('Client encountered error, ' + msg.data);
             stop = true;   // stop watching
             break;
-        case 'queryResult':
-            queryCB(msg.session, msg.data);
+        case 'txUpdated':
+            updates.push(msg.data);
             stop = false;
             break;
         default:
@@ -357,7 +363,7 @@ function zooMessageCallback(data, queryCB, results) {
     return Promise.resolve(stop);
 }
 
-function zooStartWatch(zoo, queryCB, results) {
+function zooStartWatch(zoo, updates, results) {
     var promises = [];
     var zk   = zoo.zk;
     zoo.hosts.forEach((host)=>{
@@ -366,7 +372,7 @@ function zooStartWatch(zoo, queryCB, results) {
                     zk,
                     path,
                     (data)=>{
-                        return zooMessageCallback(data, queryCB, results)
+                        return zooMessageCallback(data, updates, results)
                             .catch((err) => {
                                 console.log('Exception encountered when watching message from zookeeper, due to:');
                                 console.log(err);
