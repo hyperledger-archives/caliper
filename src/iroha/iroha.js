@@ -16,10 +16,10 @@ var queryBuilder = new iroha.ModelQueryBuilder();
 var crypto = new iroha.ModelCrypto();
 var protoTxHelper = new iroha.ModelProtoTransaction();
 var protoQueryHelper = new iroha.ModelProtoQuery();
-var pbTransaction = require('./pb/block_pb.js').Transaction;
-var pbQuery = require('./pb/queries_pb.js').Query;
+var pbTransaction = require('./external/block_pb.js').Transaction;
+var pbQuery = require('./external/queries_pb.js').Query;
 var grpc = require('grpc');
-var endpointGrpc = require('./pb/endpoint_grpc_pb.js');
+var endpointGrpc = require('./external/endpoint_grpc_pb.js');
 var irohaType = require('./type.js');
 var fs = require('fs');
 var path = require('path');
@@ -41,7 +41,9 @@ class Iroha extends BlockchainInterface{
     }
 
     init() {
-        return Promise.resolve();
+        // return Promise.resolve();
+        return sleep(5000); // wait for iroha network to start up
+                            // TODO: how to judge iroha service's status elegantly?
     }
 
     installSmartContract() {
@@ -56,6 +58,7 @@ class Iroha extends BlockchainInterface{
             console.log('Creating new account for test clients......');
 
             // get admin infro
+            var config = require(this.configPath);
             var admin        = config.iroha.admin;
             var domain       = admin.domain;
             var adminAccount = admin.account + '@' + admin.domain;
@@ -71,23 +74,44 @@ class Iroha extends BlockchainInterface{
             var node = this._findNode();
             var grpcCommandClient = new endpointGrpc.CommandServiceClient(node.torii, grpc.credentials.createInsecure());
             var grpcQueryClient   = new endpointGrpc.QueryServiceClient(node.torii, grpc.credentials.createInsecure());
+
+            // generate random name, [a-zA-Z-]
+            var seed = "abcdefghijklmnopqrstuvwxyz";
+            var accountNames = [];
+            var generateName = function() {
+                var name = "";
+                for(let i = 0 ; i < 5 ; i++) {
+                    name += seed.charAt(Math.floor(Math.random() * seed.length));
+                }
+                if(accountNames.indexOf(name) < 0) {
+                    return name;
+                }
+                else {
+                    return generateName();
+                }
+            }
             for(let i = 0 ; i < number ; i++) {
                 let keys = crypto.generateKeypair();
-                let name = 'calipertest' + i;
+                let name = generateName();
+                let id   = name + '@' + domain;
+                accountNames.push(name);
                 result.push({
                                 name:    name,
                                 domain:  domain,
+                                id:      id,
                                 pubKey:  keys.publicKey().toString(),
                                 privKey: keys.privateKey().toString(),
                             });
                 // build create account transaction
                 let commands = [{
-                                    type:   irohaType.txType['CREATE_ACCOUNT'],
-                                    name:   name,
-                                    domain: domain,
-                                    pubKey: keys.publicKey()
+                                    type: irohaType.txType['CREATE_ACCOUNT'],
+                                    args: [name, domain, keys.publicKey()]
+                               },
+                               {
+                                    type: irohaType.txType['APPEND_ROLE'],
+                                    args: [id, 'admin']
                                }];
-                console.log('Submit transaction for account ' + name);
+                console.log('Create account for ' + id);
                 let p = irohaCommand(grpcCommandClient, adminAccount, Date.now(), this.txCounter, adminKeys, commands);
                 this.txCounter++;
                 promises.push(p);
@@ -95,6 +119,7 @@ class Iroha extends BlockchainInterface{
 
             return Promise.all(promises)
                     .then(()=>{
+                        console.log('Submitted create account transactions.');
                         return sleep(5000);
                     })
                     .then(()=>{
@@ -102,26 +127,28 @@ class Iroha extends BlockchainInterface{
                         let promises = [];
                         for(let i = 0 ; i < result.length ; i++) {
                             let acc = result[i];
-
-                            let query = queryBuilder.creatorAccountId(adminAccount)
-                                        .createdTime(Date.now())
-                                        .queryCounter(this.queryCounter)
-                                        .getAccount(acc.name + '@' + acc.domain)
-                                        .build();
-                            let queryBlob  = protoQueryHelper.signAndAddSignature(query, adminKeys).blob();
-                            let queryArray = blob2array(queryBlob);
-                            let protoQuery = pbQuery.deserializeBinary(queryArray);
                             let p = new Promise((resolve, reject)=>{
-                                grpcQueryClient.find(protoQuery, (err, response)=>{
-                                    if(err){
-                                        console.log(err);
-                                        reject(err);
-                                    }
-                                    else {
-                                        resolve();
-                                    }
-                                });
+                                            irohaQuery(grpcQueryClient,
+                                                       adminAccount,
+                                                       Date.now(),
+                                                       this.queryCounter,
+                                                       adminKeys,
+                                                       {
+                                                            type: irohaType.txType['GET_ACCOUNT'],
+                                                            args: [acc.id]
+                                                       },
+                                                       (response) => {
+                                                           let accountResp = response.getAccountResponse();
+                                                           console.log('Got account successfully: ' + accountResp.getAccount().getAccountId());
+                                                           resolve();
+                                                       }
+                                            )
+                                            .catch((err)=>{
+                                                console.log(err);
+                                                reject(new Error('Failed to query account'));
+                                            });
                             });
+                            this.queryCounter++;
                             promises.push(p);
                         }
                         return Promise.all(promises);
@@ -135,6 +162,7 @@ class Iroha extends BlockchainInterface{
                     });
         }
         catch (err) {
+            console.log(err);
             return Promise.reject(new Error('Could not create accounts for Iroha clients'));
         }
 
@@ -215,6 +243,10 @@ class Iroha extends BlockchainInterface{
 }
 module.exports = Iroha;
 
+function errorInvalidArgs(type, expectedNum, actualNum) {
+    return new Error('Wrong arguments number for ' + irohaType.getTxTypeName(type) + ' : expected ' + expectedNum + ' , got ' + actualNum);
+}
+
 function irohaCommand(client, account, time, counter, keys, commands) {
     try {
          var tx = txBuilder.creatorAccountId(account)
@@ -222,19 +254,36 @@ function irohaCommand(client, account, time, counter, keys, commands) {
                             .createdTime(time);
          var txHashBlob;
          commands.reduce((prev, command) => {
-            switch(command.type) {
-                case irohaType.txType['CREATE_ACCOUNT']:
-                    return Promise.resolve(prev.createAccount(command.name, command.domain, command.pubKey));
-                default:
-                    return Promise.reject(new Error('Unimplemented command:' + irohaType.getTxTypeName(command.type)));
-            }
+            return prev.then((trans) => {
+                let type = command.type;
+                let args = command.args;
+                let expectedArgs = 0;
+                switch(type) {
+                    case irohaType.txType['CREATE_ACCOUNT']:
+                        expectedArgs = 3;
+                        if(args.length === 3) {
+                           return Promise.resolve(trans.createAccount(args[0], args[1], args[2]));
+                        }
+                        break;
+                    case irohaType.txType['APPEND_ROLE']:
+                        expectedArgs = 2;
+                        if(args.length === 2) {
+                            return Promise.resolve(trans.appendRole(args[0], args[1]));
+                        }
+                        break;
+                    default:
+                        return Promise.reject(new Error('Unimplemented command:' + irohaType.getTxTypeName(command.type)));
+                }
+                return Promise.reject(errorInvalidArgs(type, expectedArgs, args.length));
+            });
          }, Promise.resolve(tx))
          .then((transaction) => {
-            transaction.build();
-            let txblob  = protoTxHelper.signAndAddSignature(transaction, keys).blob();
+            tx = transaction.build();
+            let txblob  = protoTxHelper.signAndAddSignature(tx, keys).blob();
             let txArray = blob2array(txblob);
             let txProto = pbTransaction.deserializeBinary(txArray);
-            txHashBlob  = transaction.hash().blob();
+            txHashBlob  = tx.hash().blob();
+
             return new Promise((resolve, reject) => {
                             client.torii(txProto, (err, data)=>{
                             if(err){
@@ -255,6 +304,55 @@ function irohaCommand(client, account, time, counter, keys, commands) {
          })
     }
     catch(err) {
+        console.log(err);
         return Promise.reject('Failed to submit iroha tranaction');
+    }
+}
+
+function irohaQuery(client, account, time, counter, keys, queryCommand, callback) {
+    try {
+        var query = queryBuilder.creatorAccountId(account)
+                                .createdTime(time)
+                                .queryCounter(counter);
+        var type = queryCommand.type;
+        var args = queryCommand.args;
+        switch(type) {
+            case irohaType.txType['GET_ACCOUNT']:
+                if(args.length === 1) {
+                    query = query.getAccount(args[0]);
+                }
+                else{
+                    throw errorInvalidArgs(type, 1, args.length);
+                }
+                break;
+            default:
+                throw new Error('Unimplemented query:' + irohaType.getTxTypeName(type));
+        }
+        query = query.build();
+        var queryBlob  = protoQueryHelper.signAndAddSignature(query, keys).blob();
+        var queryArray = blob2array(queryBlob);
+        var protoQuery = pbQuery.deserializeBinary(queryArray);
+        var responseType = require('./external/responses_pb.js').QueryResponse.ResponseCase;
+        return new Promise((resolve, reject)=>{
+                    client.find(protoQuery, (err, response)=>{
+                        if(err){
+                            console.log(err);
+                            reject(err);
+                        }
+                        else {
+                            if(response.getResponseCase() === responseType['ERROR_RESPONSE']) { // error response
+                                reject(new Error('Query error, error code : ' + response.getErrorResponse().getReason()));
+                            }
+                            else {
+                                callback(response);
+                                resolve();
+                            }
+                        }
+                    });
+        });
+    }
+    catch(err) {
+        console.log(err);
+        return Promise.reject('Failed to submit iroha query');
     }
 }

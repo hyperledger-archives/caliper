@@ -28,6 +28,7 @@
                     "permissions": [
                         "CanAddPeer",
                         "CanAddSignatory",
+                        "CanAppendRole",
                         "CanCreateAccount",
                         "CanCreateDomain",
                         "CanGetAllAccountAssets",

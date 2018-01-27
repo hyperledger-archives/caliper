@@ -38,6 +38,8 @@ Run `npm install` to install dependencies locally
   * Clone [sawtooth-core](https://github.com/hyperledger/sawtooth-core) and run the `./bin/run_tests -m javascript_sdk` to test the SDK
   * Install **sawtooth-sdk** from the SDK, e.g run `npm install path-to-sdk/javascript` in capliper's root folder.
 
+* Iroha
+  * npm install google-protobuf
 
 ## Run benchmark
 

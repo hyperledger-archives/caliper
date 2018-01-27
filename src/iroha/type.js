@@ -10,6 +10,7 @@
 'use strict'
 
 var txType =  {
+    // commands
     ADD_ASSET_QUANTITY : 1,
     ADD_PEER : 2,
     ADD_SIGATORY : 3,
@@ -25,10 +26,33 @@ var txType =  {
     SET_ACCOUNT_DETAIL : 13,
     SET_ACCOUNT_QUORUM : 14,
     SUBTRACT_ASSET_QUANTITY : 15,
-    TRANSFER_ASSET : 16
+    TRANSFER_ASSET : 16,
+    // query, started from 100
+    GET_ACCOUNT : 101,
+    GET_SIGNATORIES : 102,
+    GET_ACCOUNT_TRANSACTIONS : 103,
+    GET_ACCOUNT_ASSERT_TRANSACTIONS : 104,
+    GET_TRANSACTIONS : 105,
+    GET_ACCOUNT_ASSETS : 106,
+    GET_ASSET_INFO : 107,
+    GET_ROLES : 108,
+    GET_ROLE_PERMISSIONS : 109
 };
-
 module.exports.txType = txType;
+
+/**
+* judge whether the type is a command type or query type
+* @type {Number}
+* @return {Number}, 0: command; 1: query
+*/
+module.exports.commandOrQuery = function (type) {
+    if(type < 100) {
+        return 0;
+    }
+    else {
+        return 1;
+    }
+}
 
 module.exports.getTxTypeName = function (type) {
     for(let key in txType) {
