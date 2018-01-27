@@ -23,6 +23,11 @@ var Blockchain = class {
             this.bcType = 'sawtooth';
             this.bcObj = new sawtooth(configPath);
         }
+        else if(config.hasOwnProperty('iroha')) {
+            var iroha = require('../iroha/iroha.js');
+            this.bcType = 'iroha';
+            this.bcObj = new iroha(configPath);
+        }
         else {
             this.bcType = 'unknown';
             throw new Error('Unknown blockchain config file ' + configPath);
@@ -48,6 +53,16 @@ var Blockchain = class {
     }
 
     /**
+    * create needed materials for multiple clients, e.g create account for each client and return the key pairs
+    * @number, number of clients
+    * @return {Promise}, array of generated JSON object for each client. The array length should be equal to the input number
+    *                    Each object should be passed to corresponding client and be used as a argument of getContext
+    */
+    createClients (number) {
+        return this.bcObj.createClients(number);
+    }
+
+    /**
     * install smart contract on peers
     * the detailed smart contract's information should be defined in the configuration file
     * @return {Promise}
@@ -59,10 +74,12 @@ var Blockchain = class {
     /**
     * get a system context that will be used to interact with backend's blockchain system
     * @name {string}, name of the context
+    * @args {object}, a JSON object that contains required materials for the client to interact with SUT, e.g key pairs for the client
+    *                 the actual format of the object is specified by each blochchain interface implementation
     * @return {Promise.resolve(context)}
     */
-    getContext(name) {
-        return this.bcObj.getContext(name);
+    getContext(name, args) {
+        return this.bcObj.getContext(name, args);
     }
 
     /**
@@ -207,44 +224,77 @@ var Blockchain = class {
     /**
     * merge an array of default 'txStatistics', the merged result is in the first object
     * @ results {Array}, txStatistics array
+    * @ return {Number}, 0 if failed; otherwise 1
     */
     static mergeDefaultTxStats(results) {
-        if(results.length === 0) return;
-
-        var r = results[0];
-        for(let i = 1 ; i < results.length ; i++) {
-            let v = results[i];
-            r.succ += v.succ;
-            r.fail += v.fail;
-            r.out.push.apply(r.out, v.out);
-            if(v.create.min < r.create.min) {
-                r.create.min = v.create.min;
-            }
-            if(v.create.max > r.create.max) {
-                r.create.max = v.create.max;
-            }
-            if(v.valid.min < r.valid.min) {
-                r.valid.min = v.valid.min;
-            }
-            if(v.valid.max > r.valid.max) {
-                r.valid.max = v.valid.max;
-            }
-            if(v.delay.min < r.delay.min) {
-                r.delay.min = v.delay.min;
-            }
-            if(v.delay.max > r.delay.max) {
-                r.delay.max = v.delay.max;
-            }
-            r.delay.sum += v.delay.sum;
-            for(let j in v.throughput) {
-                if(typeof r.throughput[j] === 'undefined') {
-                    r.throughput[j] = v.throughput[j];
+        try{
+            // skip null result
+            var skip = 0;
+            for(let i = 0 ; i < results.length ; i++) {
+                let result = results[i];
+                if(!result.hasOwnProperty('succ') || !result.hasOwnProperty('fail') || (result.succ + result.fail) === 0) {
+                    skip++;
                 }
                 else {
-                    r.throughput[j] += v.throughput[j];
+                    break;
                 }
             }
+            if(skip > 0) {
+                results.splice(0, skip);
+            }
+
+            if(results.length === 0) return 0;
+
+            var r = results[0];
+            for(let i = 1 ; i < results.length ; i++) {
+                let v = results[i];
+                if(!v.hasOwnProperty('succ') || !v.hasOwnProperty('fail') || (v.succ + v.fail) === 0) {
+                    continue;
+                }
+                r.succ += v.succ;
+                r.fail += v.fail;
+                r.out.push.apply(r.out, v.out);
+                if(v.create.min < r.create.min) {
+                    r.create.min = v.create.min;
+                }
+                if(v.create.max > r.create.max) {
+                    r.create.max = v.create.max;
+                }
+                if(v.valid.min < r.valid.min) {
+                    r.valid.min = v.valid.min;
+                }
+                if(v.valid.max > r.valid.max) {
+                    r.valid.max = v.valid.max;
+                }
+                if(v.delay.min < r.delay.min) {
+                    r.delay.min = v.delay.min;
+                }
+                if(v.delay.max > r.delay.max) {
+                    r.delay.max = v.delay.max;
+                }
+                r.delay.sum += v.delay.sum;
+                for(let j in v.throughput) {
+                    if(typeof r.throughput[j] === 'undefined') {
+                        r.throughput[j] = v.throughput[j];
+                    }
+                    else {
+                        r.throughput[j] += v.throughput[j];
+                    }
+                }
+            }
+            return 1;
         }
+        catch(err) {
+            return 0;
+        }
+    }
+
+    /**
+    * create a 'null txStatistics'
+    * @ results {Object}, txStatistics array
+    */
+    static createNullDefaultTxStats() {
+        return {succ: 0, fail: 0};
     }
 }
 

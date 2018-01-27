@@ -17,8 +17,6 @@ var demoXLen = 60;     // default x axis length
 var demoData;
 var demoInterObj = null;
 var demoSessionID = 0;
-//var demoProcesses = [];
-var demoQueryQueue = {};
 function demoInit() {
     var fs = require('fs');
     demoData =  {
@@ -87,28 +85,16 @@ function demoAddLatency(max, min, avg) {
     demoData.latency.avg.push(avg);
 }
 
-function demoRefreshData(sessionID) {
-    if(sessionID === 'all') {
-        // refresh all data
-        var fake = {data: []};
-        for(let key in demoQueryQueue) {
-            if(demoQueryQueue[key].data.length > 0) {
-                fake.data.push.apply(fake.data, demoQueryQueue[key].data);
-            }
-        }
-        demoQueryQueue = {fake: fake};
-        sessionID = 'fake';
-    }
-
-    if(demoQueryQueue[sessionID].data.length === 0) {
+function demoRefreshData(updates) {
+    if(updates.length  === 0) {
         demoAddThroughput(0,0,0);
         demoAddLatency(0,0,0);
     }
     else {
         var sub = 0, suc = 0, fail = 0;
         var deMax = -1, deMin = -1, deAvg = 0;
-        for(let i = 0 ; i < demoQueryQueue[sessionID].data.length ; i++) {
-            let data = demoQueryQueue[sessionID].data[i];
+        for(let i = 0 ; i < updates.length ; i++) {
+            let data = updates[i];
             sub += data.submitted;
             suc += data.committed.succ;
             fail += data.committed.fail;
@@ -126,9 +112,6 @@ function demoRefreshData(sessionID) {
         if(suc > 0) {
             deAvg /= suc;
         }
-        /*sub /= demoInterval;
-        suc /= demoInterval;
-        fail /= demoInterval;*/
         demoAddThroughput(sub, suc, fail);
 
         if(deMax === NaN || deMin === NaN || deAvg === 0) {
@@ -142,71 +125,44 @@ function demoRefreshData(sessionID) {
 
     demoRefreshX();
 
-    console.log('Submitted: ' + demoData.summary.txSub
+   // if(started) {
+        console.log('[Transaction Info] - Submitted: ' + demoData.summary.txSub
         + ' Succ: ' + demoData.summary.txSucc
         + ' Fail:' +  demoData.summary.txFail
         + ' Unfinished:' + (demoData.summary.txSub - demoData.summary.txSucc - demoData.summary.txFail));
-
-    delete demoQueryQueue[sessionID];
+   // }
 
     var fs = require('fs');
     fs.writeFileSync(demoFile,  JSON.stringify(demoData));
 }
-function demoQueryCB(sessionID, result) {
-    if(typeof sessionID === 'undefined' || sessionID === null) {
-        /*if(demoQueryQueue.hasOwnProperty('final')) {
-            demoRefreshData('final');
-        }
-        else
-        {
-            demoData.throughput.submitted.push(0);
-            demoData.throughput.succeeded.push(0);
-            demoData.throughput.failed.push(0);
-            todo
-            demoRefreshX();
-        }*/
-        demoRefreshData('all');
-    }
-    else {
-        if(demoQueryQueue.hasOwnProperty(sessionID)){
-            demoQueryQueue[sessionID].wait -= 1;
-            demoQueryQueue[sessionID].data.push(result);
-            if(demoQueryQueue[sessionID].wait === 0 && sessionID !== 'final') {
-                demoRefreshData(sessionID);
-            }
-        }
-        else {
-            // final or missed msg, will be enforced refresh later
-            demoQueryQueue[sessionID] = { wait: 99999, data: [result] };
-        }
-    }
-}
-module.exports.queryCB = demoQueryCB;
 
 var client;
 var started = false;
+var updateTail = 0;
+var updateID   = 0;
+function update() {
+    var updates = client.getUpdates();
+    if(updates.id > updateID) { // new buffer
+        updateTail = 0;
+        updateID   = updates.id;
+    }
+    var data = [];
+    var len  = updates.data.length;
+    if(len > updateTail) {
+        data = updates.data.slice(updateTail, len);
+        updateTail = len;
+    }
+    demoRefreshData(data);
+}
 function demoStartWatch(clientObj) {
     //demoProcesses = processes.slice();
-    client = clientObj;
+    client  = clientObj;
     started = true;
     if(demoInterObj === null) {
-        // start a interval to send query request
-        demoInterObj = setInterval(()=>{
-            let id = demoSessionID.toString();
-            demoSessionID++;
-            if(started) {
-                let ok = client.sendMessage({type: 'queryNewTx', session: id});
-                if(ok > 0) {
-                    demoQueryQueue[id] = { wait: ok, data: [] };
-                }
-                else {
-                    demoRefreshData('all');
-                }
-            }
-            else {
-                demoRefreshData('all');
-            }
-        }, demoInterval * 1000);
+        updateTail = 0;
+        updateID   = 0;
+        // start a interval to query updates
+        demoInterObj = setInterval(update, demoInterval * 1000);
     }
 }
 module.exports.startWatch = demoStartWatch;
@@ -223,12 +179,9 @@ function demoStopWatch(output) {
     if(demoInterObj) {
         clearInterval(demoInterObj);
         demoInterObj = null;
+        update();
     }
-    /*if(demoQueryQueue.hasOwnProperty('final')) {
-        demoRefreshData('final');
-    }*/
     demoData.report = output;
-    demoRefreshData('all');
 }
 
 module.exports.stopWatch = demoStopWatch;

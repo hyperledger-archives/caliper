@@ -29,7 +29,7 @@ class Sawtooth extends BlockchainInterface {
 		return Promise.resolve();
 	}
 
-	getContext(name) {
+	getContext(name, args) {
 		return Promise.resolve();
 
 	}

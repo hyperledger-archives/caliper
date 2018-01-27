@@ -47,53 +47,45 @@ module.exports.run = function (config_path) {
     }
     ORGS = Client.getConfigSetting('fabric').network;
     return new Promise(function(resolve, reject) {
-        test('\n\n***** join channel *****\n\n', function(t) {
-            // override t.end function so it'll always disconnect the event hub
-            t.end = ((context, ehs, f) => {
-                return function() {
-                    for(var key in ehs) {
-                        var eventhub = ehs[key];
-                        if (eventhub && eventhub.isconnected()) {
-                            logger.debug('Disconnecting the event hub');
-                            eventhub.disconnect();
-                        }
-                    }
+        var t = global.tapeObj;
+        t.comment('Join channel......')
 
-                    f.apply(context, arguments);
-                };
-            })(t, allEventhubs, t.end);
+        return channels.reduce((prev, channel)=>{
+            return prev.then(() => {
+                if(channel.deployed) {
+                    return Promise.resolve();
+                }
 
-            return channels.reduce((prev, channel)=>{
-                return prev.then(() => {
-                    if(channel.deployed) {
-                        return Promise.resolve();
-                    }
-
-                    t.comment('join ' + channel.name);
-                    let promises = [];
-                    channel.organizations.forEach((org, index) => {
-                        promises.push(joinChannel(org, channel.name, t));
-                    });
-                    return Promise.all(promises).then(()=>{
-                        t.pass('Successfully joined ' + channel.name);
-                        return Promise.resolve();
-                    });
+                t.comment('join ' + channel.name);
+                let promises = [];
+                channel.organizations.forEach((org, index) => {
+                    promises.push(joinChannel(org, channel.name));
                 });
-            }, Promise.resolve())
-            .then(() => {
-                t.end();
-                return resolve();
-            })
-            .catch((err)=>{
-                t.fail('Failed to join peers, ' + (err.stack?err.stack:err));
-                t.end();
-                return reject(new Error('Fabric: Join channel failed'));
+                return Promise.all(promises).then(()=>{
+                    t.pass('Successfully joined ' + channel.name);
+                    return Promise.resolve();
+                });
             });
+        }, Promise.resolve())
+        .then(() => {
+            return resolve();
+        })
+        .catch((err)=>{
+            t.fail('Failed to join peers, ' + (err.stack?err.stack:err));
+            return reject(new Error('Fabric: Join channel failed'));
         });
     });
 }
 
-function joinChannel(org, channelName, t) {
+function disconnect(ehs) {
+    for(var key in ehs) {
+        var eventhub = ehs[key];
+        if (eventhub && eventhub.isconnected()) {
+            eventhub.disconnect();
+        }
+    }
+}
+function joinChannel(org, channelName) {
 	var client  = new Client();
 	var channel = client.newChannel(channelName);
 
@@ -121,7 +113,7 @@ function joinChannel(org, channelName, t) {
 	}).then((store) => {
 		client.setStateStore(store);
 
-		return testUtil.getOrderAdminSubmitter(client, t);
+		return testUtil.getOrderAdminSubmitter(client);
 	}).then((admin) => {
 		tx_id = client.newTransactionID();
 		let request = {
@@ -135,7 +127,7 @@ function joinChannel(org, channelName, t) {
 		// get the peer org's admin required to send join channel requests
 		client._userContext = null;
 
-		return testUtil.getSubmitter(client, t, true /* get peer org admin */, org);
+		return testUtil.getSubmitter(client, true /* get peer org admin */, org);
 	}).then((admin) => {
 		the_user = admin;
 		for (let key in ORGS[org]) {
@@ -202,11 +194,16 @@ function joinChannel(org, channelName, t) {
 		return Promise.all([sendPromise].concat(eventPromises));
 	})
 	.then((results) => {
+	    disconnect(eventhubs);
 		if(results[0] && results[0][0] && results[0][0].response && results[0][0].response.status == 200) {
 			// t.pass(util.format('Successfully joined peers in organization %s to join the channel', orgName));
 		} else {
 			throw new Error('Unexpected join channel response');
 		}
+	})
+	.catch((err)=>{
+	    disconnect(eventhubs);
+	    return Promise.reject(err);
 	});
 }
 

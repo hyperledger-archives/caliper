@@ -72,93 +72,100 @@ var absCaliperDir = path.join(__dirname, '../..');
 * @config_path {string},path of the local configuration file
 */
 module.exports.run = function(configFile, networkFile) {
-    absConfigFile  = configFile;
-    absNetworkFile = networkFile;
-    blockchain = new Blockchain(absNetworkFile);
-    monitor = new Monitor(absConfigFile);
-    client  = new Client(absConfigFile);
-    createReport();
-    demo.init();
-    var startPromise = new Promise((resolve, reject) => {
-        let config = require(absConfigFile);
-        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('start')){
-            console.log(config.command.start);
-            let child = exec(config.command.start, {cwd: absCaliperDir}, (err, stdout, stderr) => {
-                if (err) {
-                    return reject(err);
-                }
-                return resolve();
+    test("#######Caliper Test######", (t) => {
+        global.tapeObj = t;
+        absConfigFile  = configFile;
+        absNetworkFile = networkFile;
+        blockchain = new Blockchain(absNetworkFile);
+        monitor = new Monitor(absConfigFile);
+        client  = new Client(absConfigFile);
+        createReport();
+        demo.init();
+        var startPromise = new Promise((resolve, reject) => {
+            let config = require(absConfigFile);
+            if (config.hasOwnProperty('command') && config.command.hasOwnProperty('start')){
+                console.log(config.command.start);
+                let child = exec(config.command.start, {cwd: absCaliperDir}, (err, stdout, stderr) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    return resolve();
+                });
+                child.stdout.pipe(process.stdout);
+                child.stderr.pipe(process.stderr);
+            }
+            else {
+                resolve();
+            }
+        });
+
+        startPromise.then(() => {
+            return blockchain.init();
+        })
+        .then( () => {
+            return blockchain.installSmartContract();
+        })
+        .then( () => {
+            return client.init().then((number)=>{
+                return blockchain.createClients(number);
             });
-            child.stdout.pipe(process.stdout);
-            child.stderr.pipe(process.stderr);
-        }
-        else {
-            resolve();
-        }
-    });
+        })
+        .then( () => {
 
-    startPromise.then(() => {
-        return blockchain.init();
-    })
-    .then( () => {
-        return blockchain.installSmartContract();
-    })
-    .then( () => {
-        return client.init();
-    })
-    .then( () => {
+            monitor.start().then(()=>{
+                console.log('started monitor successfully');
+            })
+            .catch( (err) => {
+                console.log('could not start monitor, ' + (err.stack ? err.stack : err));
+            });
 
-        monitor.start().then(()=>{
-            console.log('started monitor successfully');
+            var allTests  = require(absConfigFile).test.rounds;
+            var testIdx   = 0;
+            var testNum   = allTests.length;
+            //demo.startWatch(client);
+            return allTests.reduce( (prev, item) => {
+                return prev.then( () => {
+                    ++testIdx;
+                    return defaultTest(item, (testIdx === testNum))
+                });
+            }, Promise.resolve());
+        })
+        .then( () => {
+            console.log('----------finished test----------\n');
+            printResultsByRound();
+            monitor.printMaxStats();
+            monitor.stop();
+            let date = new Date().toISOString().replace(/-/g,'').replace(/:/g,'').substr(0,15);
+            let output = path.join(process.cwd(), 'report'+date+'.html' );
+            return report.generate(output).then(()=>{
+                demo.stopWatch(output);
+                console.log('Generated report at ' + output);
+                return Promise.resolve();
+            });
+        })
+        .then( () => {
+            client.stop();
+            let config = require(absConfigFile);
+            if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
+                console.log(config.command.end);
+                let end = exec(config.command.end, {cwd: absCaliperDir});
+                end.stdout.pipe(process.stdout);
+                end.stderr.pipe(process.stderr);
+            }
+            t.end();
         })
         .catch( (err) => {
-            console.log('could not start monitor, ' + (err.stack ? err.stack : err));
+            demo.stopWatch();
+            console.log('unexpected error, ' + (err.stack ? err.stack : err));
+            let config = require(absConfigFile);
+            if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
+                console.log(config.command.end);
+                let end = exec(config.command.end, {cwd: absCaliperDir});
+                end.stdout.pipe(process.stdout);
+                end.stderr.pipe(process.stderr);
+            }
+            t.end();
         });
-
-        var allTests  = require(absConfigFile).test.rounds;
-        var testIdx   = 0;
-        var testNum   = allTests.length;
-        //demo.startWatch(client);
-        return allTests.reduce( (prev, item) => {
-            return prev.then( () => {
-                ++testIdx;
-                return defaultTest(item, (testIdx === testNum))
-            });
-        }, Promise.resolve());
-    })
-    .then( () => {
-        console.log('----------finished test----------\n');
-        printResultsByRound();
-        monitor.printMaxStats();
-        monitor.stop();
-        let date = new Date().toISOString().replace(/-/g,'').replace(/:/g,'').substr(0,15);
-        let output = path.join(process.cwd(), 'report'+date+'.html' );
-        return report.generate(output).then(()=>{
-            demo.stopWatch(output);
-            console.log('Generated report at ' + output);
-            return Promise.resolve();
-        });
-    })
-    .then( () => {
-        client.stop();
-        let config = require(absConfigFile);
-        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
-            console.log(config.command.end);
-            let end = exec(config.command.end, {cwd: absCaliperDir});
-            end.stdout.pipe(process.stdout);
-            end.stderr.pipe(process.stderr);
-        }
-    })
-    .catch( (err) => {
-        demo.stopWatch();
-        console.log('unexpected error, ' + (err.stack ? err.stack : err));
-        let config = require(absConfigFile);
-        if (config.hasOwnProperty('command') && config.command.hasOwnProperty('end')){
-            console.log(config.command.end);
-            let end = exec(config.command.end, {cwd: absCaliperDir});
-            end.stdout.pipe(process.stdout);
-            end.stderr.pipe(process.stderr);
-        }
     });
 }
 
@@ -209,98 +216,71 @@ function createReport() {
 */
 function defaultTest(args, final) {
     return new Promise( function(resolve, reject) {
-        var title = '\n\n**** End-to-end flow: testing \'' + args.label + '\' ****';
-        test(title, (t) => {
-            var testLabel   = args.label;
-            var testRounds  = args.txNumbAndTps;
-            var tests = []; // array of all test rounds
-            var configPath = path.relative(absCaliperDir, absNetworkFile);
-            for(let i = 0 ; i < testRounds.length ; i++) {
-                /*let txPerClient  = Math.floor(testRounds[i][0] / clientNum);
-                let tpsPerClient = Math.floor(testRounds[i][1] / clientNum);
-                if(txPerClient < 1) {
-                    txPerClient = 1;
+        var t = global.tapeObj;
+        t.comment('\n\n###### testing \'' + args.label + '\' ######');
+        var testLabel   = args.label;
+        var testRounds  = args.txNumbAndTps;
+        var tests = []; // array of all test rounds
+        var configPath = path.relative(absCaliperDir, absNetworkFile);
+        for(let i = 0 ; i < testRounds.length ; i++) {
+            let msg = {
+                          type: 'test',
+                          label : args.label,
+                          numb: testRounds[i][0],
+                          tps:  testRounds[i][1],
+                          args: args.arguments,
+                          cb  : args.callback,
+                          config: configPath
+                       };
+            /* obsoleted
+            for( let key in args.arguments) {
+                if(args.arguments[key] === "*#out") { // from previous cached data
+                    msg.args[key] = getCache(key);
                 }
-                if(tpsPerClient < 1) {
-                    tpsPerClient = 1;
-                }*/
-
-                let msg = {
-                              type: 'test',
-                              label : args.label,
-                              numb: testRounds[i][0],
-                              tps:  testRounds[i][1],
-                              args: args.arguments,
-                              cb  : args.callback,
-                              config: configPath
-                           };
-                /* obsoleted
-                for( let key in args.arguments) {
-                    if(args.arguments[key] === "*#out") { // from previous cached data
-                        msg.args[key] = getCache(key);
-                    }
-                }
-                if (args.hasOwnProperty('out')) {
-                    msg.out = args.out;
-                }*/
-                tests.push(msg);
             }
-            var testIdx = 0;
-            return tests.reduce( function(prev, item) {
-                return prev.then( () => {
-                    console.log('----test round ' + round + '----');
-                    round++;
-                    testIdx++;
-                   /* var children  = [];  // promises of child processes
-                    var processes = [];
-                    for(let i = 0 ; i < clientNum ; i++) {
-                        children.push(loadProcess(item, i, processes));
+            if (args.hasOwnProperty('out')) {
+                msg.out = args.out;
+            }*/
+            tests.push(msg);
+        }
+        var testIdx = 0;
+        return tests.reduce( function(prev, item) {
+            return prev.then( () => {
+                console.log('----test round ' + round + '----');
+                round++;
+                testIdx++;
+                demo.startWatch(client);
+
+                return client.startTest(item, processResult, testLabel)
+                .then( () => {
+                    demo.pauseWatch();
+                    t.pass('passed \'' + testLabel + '\' testing');
+                    return Promise.resolve();
+                })
+                .then( () => {
+                    if(final && testIdx === tests.length) {
+                        return Promise.resolve();
                     }
-                    demo.startWatch(processes);
-
-                    return Promise.all(children)
-                    .then( () => {
-                        demo.pauseWatch();
-                        t.pass('passed \'' + testLabel + '\' testing');
-                        processResult(testLabel, t);
-                        return Promise.resolve();
-                    })*/
-
-                    demo.startWatch(client);
-
-                    return client.startTest(item, demo.queryCB, processResult, testLabel)
-                    .then( () => {
-                        demo.pauseWatch();
-                        t.pass('passed \'' + testLabel + '\' testing');
-                        return Promise.resolve();
-                    })
-                    .then( () => {
-                        if(final && testIdx === tests.length) {
-                            return Promise.resolve();
-                        }
-                        else {
-                            console.log('wait 5 seconds for next round...');
-                            return sleep(5000).then( () => {
-                                return monitor.restart();
-                            })
-                        }
-                    })
-                    .catch( (err) => {
-                        demo.pauseWatch();
-                        t.fail('failed \''  + testLabel + '\' testing, ' + (err.stack ? err.stack : err));
-                        return Promise.resolve();   // continue with next round ?
-                    });
+                    else {
+                        console.log('wait 5 seconds for next round...');
+                        return sleep(5000).then( () => {
+                            return monitor.restart();
+                        })
+                    }
+                })
+                .catch( (err) => {
+                    demo.pauseWatch();
+                    t.fail('failed \''  + testLabel + '\' testing, ' + (err.stack ? err.stack : err));
+                    return Promise.resolve();   // continue with next round ?
                 });
-            }, Promise.resolve())
-            .then( () => {
-                t.end();
-                return resolve();
-            })
-            .catch( (err) => {
-                t.fail(err.stack ? err.stack : err);
-                t.end();
-                return reject(new Error('defaultTest failed'));
             });
+        }, Promise.resolve())
+        .then( () => {
+            return resolve();
+        })
+        .catch( (err) => {
+            t.fail(err.stack ? err.stack : err);
+            return reject(new Error('defaultTest failed'));
         });
     });
 }
@@ -361,18 +341,23 @@ function defaultTest(args, final) {
 // TODO: should be moved to a dependent 'analyser' module in which to do all result analysing work
 function processResult(results, opt){
     try{
-        Blockchain.mergeDefaultTxStats(results);
-        var r = results[0];
-        /*for(let i = 0 ; i < r.out.length ; i++) {
-            putCache(r.out[i]);
-        }*/
-        r['opt'] = opt;
-
-        resultsbyround.push(r);
-
         var resultTable = [];
         resultTable[0] = getResultTitle();
-        resultTable[1] = getResultValue(r);
+        var r;
+        if(Blockchain.mergeDefaultTxStats(results) === 0) {
+            r = Blockchain.createNullDefaultTxStats;
+            r['opt'] = opt;
+        }
+        else {
+             r = results[0];
+            /*for(let i = 0 ; i < r.out.length ; i++) {
+                putCache(r.out[i]);
+            }*/
+            r['opt'] = opt;
+            resultTable[1] = getResultValue(r);
+        }
+
+        resultsbyround.push(r);
         console.log('###test result:###');
         printTable(resultTable);
         var idx = report.addBenchmarkRound(opt);
