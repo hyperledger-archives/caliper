@@ -336,7 +336,6 @@ function irohaQuery(client, account, time, counter, keys, queryCommand, callback
         return new Promise((resolve, reject)=>{
                     client.find(protoQuery, (err, response)=>{
                         if(err){
-                            console.log(err);
                             reject(err);
                         }
                         else {

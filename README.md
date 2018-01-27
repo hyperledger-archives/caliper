@@ -5,6 +5,7 @@ Caliper is a blockchain performance benchmark framework, which allows users to t
 Currently supported blockchain solutions:
 * [fabric 1.0.5](https://github.com/hyperledger/fabric)
 * [sawtooth](https://github.com/hyperledger/sawtooth-core) 
+* Iroha (in development...)
 
 Currently supported performance indicators:
 * Success rate
@@ -39,7 +40,12 @@ Run `npm install` to install dependencies locally
   * Install **sawtooth-sdk** from the SDK, e.g run `npm install path-to-sdk/javascript` in capliper's root folder.
 
 * Iroha
-  * npm install google-protobuf
+  * Install dependencies
+  
+    ```
+    $sudo apt-get install libv8-devnpm 
+    $install google-protobuf grpc`
+    ```
 
 ## Run benchmark
 
