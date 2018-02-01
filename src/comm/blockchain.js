@@ -95,7 +95,7 @@ var Blockchain = class {
     * @context {Object}, context returned by getContext
     * @contractID {string}, smart contract's id
     * @contractVer {string}, smart contract's version
-    * @args {Array}, invoking arguments [arg1, arg2, ...]
+    * @args {object}, invoking arguments
     * @timeout {Number}, return directly after that time in seconds has elapsed
     * @return {Promise.resolve(Object)}, return the key informations of the transaction, the format is
      *       {
@@ -104,7 +104,7 @@ var Blockchain = class {
     *                        - 'created': successfully created, but not validated or committed yet
     *                        - 'success': successfully validated and committed in the ledger
     *           'time_create': time(ms) that the transaction was created
-    *           'time_valid':  time(ms) that the transaction was known to be valid and committed in ledger
+    *           'time_final':  time(ms) that the transaction was known to be final and committed in ledger
     *           'result': response payloads of the transaction request
     *           ...... :  blockchain platform specific values
     *         }
@@ -131,7 +131,7 @@ var Blockchain = class {
     *     succ : ,                            // number of succeeded txs
     *     fail : ,                            // number of failed txs
     *     create : {min: , max: },            // min/max time of tx created, in second
-    *     valid  : {min: , max: },            // min/max time of tx becoming valid, in second
+    *     final  : {min: , max: },            // min/max time of tx becoming final, in second
     *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay,  in second
     *     throughput : {time: ,...},          // tps of each time slot
     *     out : []                            // user defined output data
@@ -146,7 +146,7 @@ var Blockchain = class {
     // TODO: should be moved to a dependent 'analyser' module in which to do all result analysing work
     getDefaultTxStats(results) {
         var succ = 0, fail = 0, delay = 0;
-        var minValid, maxValid, minCreate, maxCreate;
+        var minFinal, maxFinal, minCreate, maxCreate;
         var minDelay = 100000, maxDelay = 0;
         var throughput = {};
         for(let i = 0 ; i < results.length ; i++) {
@@ -168,18 +168,18 @@ var Blockchain = class {
 
             if(stat.status === 'success') {
                 succ++;
-                let valid = stat['time_valid'];
-                let d     = (valid - create) / 1000;
-                if(typeof minValid === 'undefined') {
-                    minValid = valid;
-                    maxValid = valid;
+                let final = stat['time_final'];
+                let d     = (final - create) / 1000;
+                if(typeof minFinal === 'undefined') {
+                    minFinal = final;
+                    maxFinal = final;
                 }
                 else {
-                    if(valid < minValid) {
-                        minValid = valid;
+                    if(final < minFinal) {
+                        minFinal = final;
                     }
-                    if(valid > maxValid) {
-                        maxValid = valid;
+                    if(final > maxFinal) {
+                        maxFinal = final;
                     }
                 }
 
@@ -191,7 +191,7 @@ var Blockchain = class {
                     maxDelay = d;
                 }
 
-                let idx = Math.round(valid).toString();
+                let idx = Math.round(final).toString();
                 if(typeof throughput[idx] === 'undefined') {
                     throughput[idx] = 1;
                 }
@@ -208,7 +208,7 @@ var Blockchain = class {
             'succ' : succ,
             'fail' : fail,
             'create' : {'min' : minCreate/1000, 'max' : maxCreate/1000},    // convert to second
-            'valid'  : {'min' : minValid/1000,  'max' : maxValid/1000 },
+            'final'  : {'min' : minFinal/1000,  'max' : maxFinal/1000 },
             'delay'  : {'min' : minDelay,  'max' : maxDelay, 'sum' : delay },
             'throughput' : throughput,
             'out' : []
@@ -260,11 +260,11 @@ var Blockchain = class {
                 if(v.create.max > r.create.max) {
                     r.create.max = v.create.max;
                 }
-                if(v.valid.min < r.valid.min) {
-                    r.valid.min = v.valid.min;
+                if(v.final.min < r.final.min) {
+                    r.final.min = v.final.min;
                 }
-                if(v.valid.max > r.valid.max) {
-                    r.valid.max = v.valid.max;
+                if(v.final.max > r.final.max) {
+                    r.final.max = v.final.max;
                 }
                 if(v.delay.min < r.delay.min) {
                     r.delay.min = v.delay.min;

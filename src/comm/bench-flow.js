@@ -330,7 +330,7 @@ function defaultTest(args, final) {
 *     succ : ,                            // number of succeeded txs
 *     fail : ,                            // number of failed txs
 *     create : {min: , max: },            // min/max time of tx created
-*     valid  : {min: , max: },            // min/max time of tx becoming valid
+*     final  : {min: , max: },            // min/max time of tx becoming final
 *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay
 *     throughput : {time: ,...}           // tps of each time slot
 *     // obsoleted out: {key, value}                   // output that should be cached for following tests
@@ -422,7 +422,7 @@ function getResultValue(r) {
     row.push((r.delay.sum / r.succ).toFixed(2) + ' s');
 //    row.push(max.toString() + ' tps');
 //    row.push(min.toString() + ' tps');
-    (r.valid.max === r.valid.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.valid.max - r.create.min)).toFixed(0)) + ' tps');
+    (r.final.max === r.final.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.final.max - r.create.min)).toFixed(0)) + ' tps');
     return row;
 }
 

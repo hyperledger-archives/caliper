@@ -26,7 +26,7 @@ module.exports.init = function(blockchain, context, args) {
 module.exports.run = function() {
     var newAcc = 'account' + process.pid + '_' + accounts.length;
     accounts.push(newAcc);
-    return bc.invokeSmartContract(contx, 'simple', 'v0', [{verb: 'open'}, {account: newAcc}, {money: initMoney}], 120);
+    return bc.invokeSmartContract(contx, 'simple', 'v0', {verb: 'open', account: newAcc, money: initMoney}, 120);
 }
 
 module.exports.end = function(results) {
