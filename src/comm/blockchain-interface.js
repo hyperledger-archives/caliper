@@ -21,7 +21,7 @@ class BlockchainInterface {
         throw new Error('installSmartContract is not implemented for this blockchain system');
     }
 
-    createClients (number) {
+    prepareClients (number) {
         var result = [];
         for(let i = 0 ; i< number ; i++) {
             result[i] = {}; // as default, return an empty object for each client

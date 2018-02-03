@@ -55,7 +55,6 @@ function txUpdate() {
 
     var newResults =  results.slice(txUpdateTail);
     txUpdateTail += newResults.length;
-
     if(newResults.length === 0 && newNum === 0) {
         return;
     }
@@ -104,7 +103,7 @@ function doTest(msg) {
             txUpdate();
         }
     };
-    return blockchain.getContext(msg.label)
+    return blockchain.getContext(msg.label, msg.clientargs)
     .then((context) => {
         bcContext = context;
         var rounds   = Array(msg.numb).fill(0);

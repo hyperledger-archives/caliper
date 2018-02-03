@@ -20,11 +20,15 @@ var pbTransaction = require('./external/block_pb.js').Transaction;
 var pbQuery = require('./external/queries_pb.js').Query;
 var grpc = require('grpc');
 var endpointGrpc = require('./external/endpoint_grpc_pb.js');
+var endpointPb = require('./external/endpoint_pb.js');
+var txStatus =  require('./external/endpoint_pb.js').TxStatus;
 var irohaType = require('./type.js');
 var fs = require('fs');
 var path = require('path');
 var sleep = require('../comm/sleep.js');
 
+
+var contexts = {};
 function blob2array(blob) {
     var bytearray = new Uint8Array(blob.size());
     for (let i = 0 ; i < blob.size() ; ++i) {
@@ -36,8 +40,7 @@ function blob2array(blob) {
 class Iroha extends BlockchainInterface{
     constructor(config_path) {
         super(config_path);
-        this.txCounter = 1;
-        this.queryCounter = 1;
+        this.statusInterval = null;
     }
 
     init() {
@@ -53,7 +56,7 @@ class Iroha extends BlockchainInterface{
         return Promise.resolve();
     }
 
-    createClients (number) {
+    prepareClients (number) {
         try{
             console.log('Creating new account for test clients......');
 
@@ -68,6 +71,10 @@ class Iroha extends BlockchainInterface{
             var adminPub     = fs.readFileSync(pubPath).toString();
             var adminKeys    = crypto.convertFromExisting(adminPub, adminPriv);
 
+             // test
+             console.log(adminPriv);
+             console.log(adminPub);
+
             // create account for each client
             var result = [];
             var promises = [];
@@ -75,7 +82,7 @@ class Iroha extends BlockchainInterface{
             var grpcCommandClient = new endpointGrpc.CommandServiceClient(node.torii, grpc.credentials.createInsecure());
             var grpcQueryClient   = new endpointGrpc.QueryServiceClient(node.torii, grpc.credentials.createInsecure());
 
-            // generate random name, [a-zA-Z-]
+            // generate random name, [a-z]
             var seed = "abcdefghijklmnopqrstuvwxyz";
             var accountNames = [];
             var generateName = function() {
@@ -90,6 +97,7 @@ class Iroha extends BlockchainInterface{
                     return generateName();
                 }
             }
+            var txCounter = 1;
             for(let i = 0 ; i < number ; i++) {
                 let keys = crypto.generateKeypair();
                 let name = generateName();
@@ -99,8 +107,8 @@ class Iroha extends BlockchainInterface{
                                 name:    name,
                                 domain:  domain,
                                 id:      id,
-                                pubKey:  keys.publicKey().toString(),
-                                privKey: keys.privateKey().toString(),
+                                pubKey:  keys.publicKey().hex(),
+                                privKey: keys.privateKey().hex()
                             });
                 // build create account transaction
                 let commands = [{
@@ -110,13 +118,17 @@ class Iroha extends BlockchainInterface{
                                {
                                     type: irohaType.txType['APPEND_ROLE'],
                                     args: [id, 'admin']
-                               }];
+                               },
+                               {
+                                    type: irohaType.txType['APPEND_ROLE'],
+                                    args: [id, 'moneyadm']
+                               },];
                 console.log('Create account for ' + id);
-                let p = irohaCommand(grpcCommandClient, adminAccount, Date.now(), this.txCounter, adminKeys, commands);
-                this.txCounter++;
+                let p = irohaCommand(grpcCommandClient, adminAccount, Date.now(), txCounter, adminKeys, commands);
+                txCounter++;
                 promises.push(p);
             }
-
+            var queryCounter = 1;
             return Promise.all(promises)
                     .then(()=>{
                         console.log('Submitted create account transactions.');
@@ -131,12 +143,12 @@ class Iroha extends BlockchainInterface{
                                             irohaQuery(grpcQueryClient,
                                                        adminAccount,
                                                        Date.now(),
-                                                       this.queryCounter,
+                                                       queryCounter,
                                                        adminKeys,
-                                                       {
+                                                       [{
                                                             type: irohaType.txType['GET_ACCOUNT'],
                                                             args: [acc.id]
-                                                       },
+                                                       }],
                                                        (response) => {
                                                            let accountResp = response.getAccountResponse();
                                                            console.log('Got account successfully: ' + accountResp.getAccount().getAccountId());
@@ -148,7 +160,7 @@ class Iroha extends BlockchainInterface{
                                                 reject(new Error('Failed to query account'));
                                             });
                             });
-                            this.queryCounter++;
+                            queryCounter++;
                             promises.push(p);
                         }
                         return Promise.all(promises);
@@ -170,41 +182,116 @@ class Iroha extends BlockchainInterface{
 
     getContext(name, args) {
         try {
-            var config = require(this.configPath);
+            if(!args.hasOwnProperty('name') || !args.hasOwnProperty('domain') || !args.hasOwnProperty('id') || !args.hasOwnProperty('pubKey') || !args.hasOwnProperty('privKey')) {
+                throw new Error('Invalid Iroha::getContext arguments');
+            }
+            if(!contexts.hasOwnProperty(args.id)) {
+                // save context for later use
+                // since iroha requires sequential counter for messages from same account, the counter must be save if getContext are invoked multiple times for the same account
+                contexts[args.id] = {
+                    name:         args.name,
+                    domain:       args.domain,
+                    id:           args.id,
+                    pubKey:       args.pubKey,
+                    privKey:      args.privKey,
+                    keys:         crypto.convertFromExisting(args.pubKey, args.privKey),
+                    txCounter:    1,
+                    queryCounter: 1
+                }
 
-            // find callbacks for simulated smart contract
-            var fc = config.iroha.fakecontract;
-            var fakeContracts = {};
-            for(let i = 0 ; i < fc.length ; i++) {
-                let contract = fc[i];
-                let facPath  = path.join(__dirname, '../..', contract.factory);
-                let factory  = require(facPath);
-                for(let j = 0 ; j < contract.id.length ; j++) {
-                    let id = contract.id[j]
-                    if(!factory.contracts.hasOwnProperty(id)) {
-                        throw new Error('Could not get function "' + id + '" in ' + facPath);
-                    }
-                    else {
-                        if(fakeContracts.hasOwnProperty(id)) {
-                            console.log('WARNING: multiple callbacks for ' + id + ' have been found');
+
+                var config = require(this.configPath);
+
+                // find callbacks for simulated smart contract
+                var fc = config.iroha.fakecontract;
+                var fakeContracts = {};
+                for(let i = 0 ; i < fc.length ; i++) {
+                    let contract = fc[i];
+                    let facPath  = path.join(__dirname, '../..', contract.factory);
+                    let factory  = require(facPath);
+                    for(let j = 0 ; j < contract.id.length ; j++) {
+                        let id = contract.id[j]
+                        if(!factory.contracts.hasOwnProperty(id)) {
+                            throw new Error('Could not get function "' + id + '" in ' + facPath);
                         }
                         else {
-                            fakeContracts[id] = factory.contracts[id];
+                            if(fakeContracts.hasOwnProperty(id)) {
+                                console.log('WARNING: multiple callbacks for ' + id + ' have been found');
+                            }
+                            else {
+                                fakeContracts[id] = factory.contracts[id];
+                            }
                         }
                     }
                 }
+
+                var node = this._findNode();
+                contexts[args.id]['torii'] = node.torii;
+                contexts[args.id]['contract'] = fakeContracts;
             }
 
-            var node = this._findNode();
+            this.grpcCommandClient = new endpointGrpc.CommandServiceClient(node.torii, grpc.credentials.createInsecure());
+            this.grpcQueryClient   = new endpointGrpc.QueryServiceClient(node.torii, grpc.credentials.createInsecure());
+            this.statusWaiting     = {};
+            var self = this;
+            function getStatus() {
+                 for(var key in self.statusWaiting) {
+                    (function(id) {
+                        let item   = self.statusWaiting[id];
+                        let status = item.status;
+                        let timeElapse =  Date.now() - status.time_create;
+                        if(timeElapse > status.timeout) {
+                            console.log("Timeout when querying transaction's status");
+                            status.status = 'failed';
+                            status.final  = Date.now();
+                            item.resolve(status);
+                            delete self.statusWaiting[id];
+                        }
+                        else if(!item.isquery) {
+                            item.isquery = true;
+                            let request = new endpointPb.TxStatusRequest();
+                            request.setTxHash(status.id);
+
+                            self.grpcCommandClient.status(request, (err, response)=>{
+                                item.isquery = false;
+                                let final = false;
+                                if(err) {
+                                    console.log(err);
+                                    status.status = 'failed';
+                                    final = true;
+                                }
+                                else {
+                                    let s = response.getTxStatus();
+
+                                    if(s === txStatus['COMMITTED']) {
+                                        status.status = 'success';
+                                        final = true;
+                                    }
+                                    else if(s === txStatus['STATELESS_VALIDATION_FAILED']
+                                          || s === txStatus['STATEFUL_VALIDATION_FAILED']
+                                          || s === txStatus['NOT_RECEIVED']) {
+                                        status.status = 'failed';
+                                        final = true;
+                                    }
+                                }
+                                if (final) {
+                                    status.time_final  = Date.now();
+                                    item.resolve(status);
+                                    delete self.statusWaiting[id];
+                                }
+                            });
+                        }
+                    })(key);
+                 }
+            }
+
+            if(this.statusInterval) {
+                clearInterval(this.statusInterval);
+            }
+            this.statusInterval = setInterval(getStatus, 1000);
 
             // return the context
-            return Promise.resolve();
-            /*return Promise.resolve({
-                torii: node.torii,
-                creator: node['test-user'],
-                keys: keys,
-                contract: fakeContracts
-            });*/
+            return Promise.resolve(contexts[args.id]);
         }
         catch (err) {
             console.log(err);
@@ -213,12 +300,71 @@ class Iroha extends BlockchainInterface{
     }
 
     releaseContext(context) {
+        if(this.statusInterval) {
+            clearInterval(this.statusInterval);
+            this.statusInterval = null
+        }
         return Promise.resolve();
     }
 
     invokeSmartContract(context, contractID, contractVer, args, timeout) {
-        // todo
-        return Promise.resolve();
+        try {
+            if(!context.contract.hasOwnProperty(contractID)) {
+                throw new Error('Could not find contract named ' + contractID);
+            }
+
+            var commands = context.contract[contractID](contractVer, context, args);
+            if(commands.length === 0) {
+                throw new Error('Empty output of contract ' + contractID);
+            }
+            var p;
+            var status = {
+                id           : null,
+                status       : 'created',
+                time_create  : Date.now(),
+                time_final   : 0,
+                timeout      : timeout*1000,
+                result       : null
+            };
+            var key;
+            if(irohaType.commandOrQuery(commands[0].type) === 0) {
+                p = new Promise((resolve, reject)=>{
+                    let counter = context.txCounter;
+                    key = context.id+'_command_'+counter;
+                    context.txCounter++;
+                    irohaCommand(this.grpcCommandClient, context.id, Date.now(), counter, context.keys, commands)
+                    .then((txid)=>{
+                        status.id = txid;
+                        this.statusWaiting[key] = {status:status, resolve:resolve, reject:reject, isquery: false};
+                    });
+                });
+            }
+            else {
+                p = new Promise((resolve, reject)=>{
+                    let counter = context.queryCounter;
+                    context.queryCounter++;
+                    irohaQuery(this.grpcQueryClient, context.id, Date.now(), counter, context.keys, commands,
+                               (response) => {
+                                   status.status = 'success';
+                                   status.time_final = Date.now();
+                                   resolve();  // TODO: should check the response??
+                               }
+                    )
+                    .catch((err)=>{
+                        console.log(err);
+                        status.status = 'failed';
+                        status.time_final = Date.now();
+                        resolve();
+                    });
+                });
+            }
+
+            return p;
+        }
+        catch(err) {
+            console.log(err);
+            return Promise.reject();
+        }
     }
 
     queryState(context, contractID, contractVer, key) {
@@ -252,23 +398,41 @@ function irohaCommand(client, account, time, counter, keys, commands) {
          var tx = txBuilder.creatorAccountId(account)
                             .txCounter(counter)
                             .createdTime(time);
-         var txHashBlob;
-         commands.reduce((prev, command) => {
+         var txHash;
+         return commands.reduce((prev, command) => {
             return prev.then((trans) => {
                 let type = command.type;
                 let args = command.args;
                 let expectedArgs = 0;
                 switch(type) {
-                    case irohaType.txType['CREATE_ACCOUNT']:
+                    case irohaType.txType['ADD_ASSET_QUANTITY']:
                         expectedArgs = 3;
                         if(args.length === 3) {
-                           return Promise.resolve(trans.createAccount(args[0], args[1], args[2]));
+                            return Promise.resolve(trans.addAssetQuantity(args[0], args[1], args[2]));
                         }
                         break;
                     case irohaType.txType['APPEND_ROLE']:
                         expectedArgs = 2;
                         if(args.length === 2) {
                             return Promise.resolve(trans.appendRole(args[0], args[1]));
+                        }
+                        break;
+                    case irohaType.txType['CREATE_ACCOUNT']:
+                        expectedArgs = 3;
+                        if(args.length === 3) {
+                           return Promise.resolve(trans.createAccount(args[0], args[1], args[2]));
+                        }
+                        break;
+                    case irohaType.txType['CREATE_ASSET']:
+                        expectedArgs = 3;
+                        if(args.length === 3) {
+                           return Promise.resolve(trans.createAsset(args[0], args[1], args[2]));
+                        }
+                        break;
+                    case irohaType.txType['CREATE_DOMAIN']:
+                        expectedArgs = 2;
+                        if(args.length === 2) {
+                           return Promise.resolve(trans.createDomain(args[0], args[1]));
                         }
                         break;
                     default:
@@ -282,7 +446,8 @@ function irohaCommand(client, account, time, counter, keys, commands) {
             let txblob  = protoTxHelper.signAndAddSignature(tx, keys).blob();
             let txArray = blob2array(txblob);
             let txProto = pbTransaction.deserializeBinary(txArray);
-            txHashBlob  = tx.hash().blob();
+            let txHashBlob  = tx.hash().blob();
+            txHash = blob2array(txHashBlob);
 
             return new Promise((resolve, reject) => {
                             client.torii(txProto, (err, data)=>{
@@ -296,7 +461,7 @@ function irohaCommand(client, account, time, counter, keys, commands) {
                     });
          })
          .then(()=>{
-            return Promise.resolve(txHashBlob);
+            return Promise.resolve(txHash);
          })
          .catch((err)=>{
             console.log(err);
@@ -309,8 +474,9 @@ function irohaCommand(client, account, time, counter, keys, commands) {
     }
 }
 
-function irohaQuery(client, account, time, counter, keys, queryCommand, callback) {
+function irohaQuery(client, account, time, counter, keys, commands, callback) {
     try {
+        var queryCommand = commands[0];
         var query = queryBuilder.creatorAccountId(account)
                                 .createdTime(time)
                                 .queryCounter(counter);

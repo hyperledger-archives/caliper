@@ -63,28 +63,29 @@ var Client = class {
     *              config: path of the blockchain config file   // TODO: how to deal with the local config file when transfer it to a remote client (via zookeeper), as well as any local materials like cyrpto keys??
     *              out:    (optional)key of the output data
     *            };
+    * @clientArgs {Array}, arguments that should be passed to each real client
     * @queryCB {callback}, callback of query message
     * @finishCB {callback}, callback after the test finished
-    * @args{any}, args that should be passed to finishCB, the callback is invoke as finishCB(this.results, args)
+    * @finshArgs{any}, args that should be passed to finishCB, the callback is invoke as finishCB(this.results, finshArgs)
     * @return {Promise}
     */
-    startTest(message, finishCB, args) {
+    startTest(message, clientArgs, finishCB, finshArgs) {
         var p;
         this.results = [];
         this.updates.data = [];
         this.updates.id++;
         switch(this.type) {
             case CLIENT_LOCAL:
-                p = this._startLocalTest(message);
+                p = this._startLocalTest(message, clientArgs);
                 break;
             case CLIENT_ZOO:
-                 p = this._startZooTest(message);
+                 p = this._startZooTest(message, clientArgs);
                  break;
             default:
                 return Promise.reject(new Error('Unknown client type: ' + this.type));
         }
         return p.then(()=>{
-            return finishCB(this.results, args);
+            return finishCB(this.results, finshArgs);
         })
         .then(()=>{
             return Promise.resolve();
@@ -139,8 +140,8 @@ var Client = class {
     /**
     * functions for CLIENT_LOCAL
     */
-    _startLocalTest(message) {
-        return clientUtil.startTest(this.number, message,this.updates.data, this.results);
+    _startLocalTest(message, clientArgs) {
+        return clientUtil.startTest(this.number, message, clientArgs, this.updates.data, this.results);
     }
 
     _sendLocalMessage(message) {
@@ -240,7 +241,7 @@ var Client = class {
         return p;
     }
 
-    _startZooTest(message) {
+    _startZooTest(message, clientArgs) {
         var number = this.zoo.hosts.length;
         var txPerClient  = Math.floor(message.numb / number);
         var tpsPerClient = Math.floor(message.tps / number);
@@ -253,7 +254,7 @@ var Client = class {
         message.numb = txPerClient;
         message.tps  = tpsPerClient;
         message['clients'] = this.zoo.clientsPerHost;
-        return this._sendZooMessage(message)
+        return this._sendZooMessage(message, clientArgs)
                 .then((number)=>{
                     if(number > 0) {
                         return zooStartWatch(this.zoo, this.updates.data,  this.results);
@@ -268,13 +269,26 @@ var Client = class {
                 });
     }
 
-    _sendZooMessage(message) {
+    _sendZooMessage(message, clientArgs) {
         var promises = [];
         var succ = 0;
+        if(Array.isArray(clientArgs)) {
+            var argsSlice = clientArgs.length / this.zoo.hosts.length;
+        }
+        else {
+            var msgBuffer = new Buffer(JSON.stringify(message));
+        }
+        this.zoo.hosts.forEach((host, idx)=>{
+            let data;
+            if(Array.isArray(clientArgs)) {
+                let msg = message;
+                msg['clientargs'] = clientArgs.slice(idx * argsSlice, idx * argsSlice+argsSlice);
+                data = new Buffer(JSON.stringify(msg));
+            }
+            else {
+                data = msgBuffer;
+            }
 
-        var data = new Buffer(JSON.stringify(message));
-
-        this.zoo.hosts.forEach((host)=>{
             let p = zkUtil.createP(this.zoo.zk, host.innode+'/msg_', data, ZooKeeper.CreateMode.EPHEMERAL_SEQUENTIAL, 'Failed to send message (create node) due to')
                     .then((path)=>{
                         succ++;

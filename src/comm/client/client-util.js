@@ -77,7 +77,7 @@ function launchClient(message, updateCB, results) {
     });
 }
 
-function startTest(number, message, updates, results) {
+function startTest(number, message, clientArgs, updates, results) {
     var count = 0;
     for (var i in processes) {
         count++;
@@ -95,6 +95,7 @@ function startTest(number, message, updates, results) {
         message.tps  = tpsPerClient;
 
         let promises = [];
+        let idx = 0;
         for(let id in processes) {
             let client = processes[id];
             let p = new Promise((resolve, reject) => {
@@ -106,6 +107,9 @@ function startTest(number, message, updates, results) {
             promises.push(p);
             client['results'] = results;
             client['updates'] = updates;
+            message['clientargs'] = clientArgs[idx];
+            idx++;
+
             client.obj.send(message);
         }
 
@@ -130,7 +134,7 @@ function startTest(number, message, updates, results) {
     }
 
     // start test
-    return startTest(number, message, updates, results);
+    return startTest(number, message, clientArgs, updates, results);
 }
 module.exports.startTest = startTest;
 

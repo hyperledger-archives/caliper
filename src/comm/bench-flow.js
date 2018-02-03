@@ -107,10 +107,10 @@ module.exports.run = function(configFile, networkFile) {
         })
         .then( () => {
             return client.init().then((number)=>{
-                return blockchain.createClients(number);
+                return blockchain.prepareClients(number);
             });
         })
-        .then( () => {
+        .then( (clientArgs) => {
 
             monitor.start().then(()=>{
                 console.log('started monitor successfully');
@@ -126,7 +126,7 @@ module.exports.run = function(configFile, networkFile) {
             return allTests.reduce( (prev, item) => {
                 return prev.then( () => {
                     ++testIdx;
-                    return defaultTest(item, (testIdx === testNum))
+                    return defaultTest(item, clientArgs, (testIdx === testNum))
                 });
             }, Promise.resolve());
         })
@@ -211,10 +211,11 @@ function createReport() {
 /**
 * load client(s) to do performance tests
 * @args {Object}: testing arguments
+* @clientArgs {Array}: arguments for the client
 * @final {boolean}: =true, the last test; otherwise, =false
 * @return {Promise}
 */
-function defaultTest(args, final) {
+function defaultTest(args, clientArgs, final) {
     return new Promise( function(resolve, reject) {
         var t = global.tapeObj;
         t.comment('\n\n###### testing \'' + args.label + '\' ######');
@@ -251,7 +252,7 @@ function defaultTest(args, final) {
                 testIdx++;
                 demo.startWatch(client);
 
-                return client.startTest(item, processResult, testLabel)
+                return client.startTest(item, clientArgs, processResult, testLabel)
                 .then( () => {
                     demo.pauseWatch();
                     t.pass('passed \'' + testLabel + '\' testing');

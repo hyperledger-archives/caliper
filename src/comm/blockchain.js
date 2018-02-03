@@ -58,8 +58,8 @@ var Blockchain = class {
     * @return {Promise}, array of generated JSON object for each client. The array length should be equal to the input number
     *                    Each object should be passed to corresponding client and be used as a argument of getContext
     */
-    createClients (number) {
-        return this.bcObj.createClients(number);
+    prepareClients (number) {
+        return this.bcObj.prepareClients(number);
     }
 
     /**
