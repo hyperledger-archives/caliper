@@ -160,7 +160,7 @@ function zooMessageCallback(data) {
             beforeTest();
             zkUtil.removeChildrenP(zk, outNode, 'Failed to remove children in outNode due to')
             .then(()=>{
-                return clientUtil.startTest(msg.clients, msg, updates, results);
+                return clientUtil.startTest(msg.clients, msg, msg.clientargs, updates, results);
             })
             .then(() => {
                 return afterTest();

@@ -39,7 +39,7 @@ module.exports.run = function() {
                     'info' : '',
                     'item' : buf
                 };
-    return bc.invokeSmartContract(contx, 'drm', 'v0', [{verb : 'publish'}, {item: JSON.stringify(item)}], 120);
+    return bc.invokeSmartContract(contx, 'drm', 'v0', {verb : 'publish', item: JSON.stringify(item)}, 120);
 }
 
 module.exports.end = function(results) {

@@ -107,10 +107,10 @@ module.exports.run = function(configFile, networkFile) {
         })
         .then( () => {
             return client.init().then((number)=>{
-                return blockchain.createClients(number);
+                return blockchain.prepareClients(number);
             });
         })
-        .then( () => {
+        .then( (clientArgs) => {
 
             monitor.start().then(()=>{
                 console.log('started monitor successfully');
@@ -126,7 +126,7 @@ module.exports.run = function(configFile, networkFile) {
             return allTests.reduce( (prev, item) => {
                 return prev.then( () => {
                     ++testIdx;
-                    return defaultTest(item, (testIdx === testNum))
+                    return defaultTest(item, clientArgs, (testIdx === testNum))
                 });
             }, Promise.resolve());
         })
@@ -211,10 +211,11 @@ function createReport() {
 /**
 * load client(s) to do performance tests
 * @args {Object}: testing arguments
+* @clientArgs {Array}: arguments for the client
 * @final {boolean}: =true, the last test; otherwise, =false
 * @return {Promise}
 */
-function defaultTest(args, final) {
+function defaultTest(args, clientArgs, final) {
     return new Promise( function(resolve, reject) {
         var t = global.tapeObj;
         t.comment('\n\n###### testing \'' + args.label + '\' ######');
@@ -251,7 +252,7 @@ function defaultTest(args, final) {
                 testIdx++;
                 demo.startWatch(client);
 
-                return client.startTest(item, processResult, testLabel)
+                return client.startTest(item, clientArgs, processResult, testLabel)
                 .then( () => {
                     demo.pauseWatch();
                     t.pass('passed \'' + testLabel + '\' testing');
@@ -330,7 +331,7 @@ function defaultTest(args, final) {
 *     succ : ,                            // number of succeeded txs
 *     fail : ,                            // number of failed txs
 *     create : {min: , max: },            // min/max time of tx created
-*     valid  : {min: , max: },            // min/max time of tx becoming valid
+*     final  : {min: , max: },            // min/max time of tx becoming final
 *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay
 *     throughput : {time: ,...}           // tps of each time slot
 *     // obsoleted out: {key, value}                   // output that should be cached for following tests
@@ -422,7 +423,7 @@ function getResultValue(r) {
     row.push((r.delay.sum / r.succ).toFixed(2) + ' s');
 //    row.push(max.toString() + ' tps');
 //    row.push(min.toString() + ' tps');
-    (r.valid.max === r.valid.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.valid.max - r.create.min)).toFixed(0)) + ' tps');
+    (r.final.max === r.final.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.final.max - r.create.min)).toFixed(0)) + ' tps');
     return row;
 }
 

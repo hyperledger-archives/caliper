@@ -511,7 +511,7 @@ function invokebycontext(context, id, version, args, timeout){
         id           : tx_id.getTransactionID(),
         status       : 'created',
         time_create  : Date.now(),
-        time_valid   : 0,
+        time_final   : 0,
         time_endorse : 0,
         time_order   : 0,
         result       : null
@@ -617,7 +617,7 @@ function invokebycontext(context, id, version, args, timeout){
 
 		if (response.status === 'SUCCESS') {
 			invoke_status.status = 'success';
-			invoke_status.time_valid = Date.now();
+			invoke_status.time_final = Date.now();
 			return Promise.resolve(invoke_status);
 		} else {
 			throw new Error('Failed to order the transaction. Error code: ' + response.status);
@@ -627,7 +627,7 @@ function invokebycontext(context, id, version, args, timeout){
 	    // return resolved, so we can use promise.all to handle multiple invoking
 	    // invoke_status is used to judge the invoking result
 	    console.log('Invoke chaincode failed, ' + (err.stack?err.stack:err));
-	    invoke_status.time_valid = Date.now();
+	    invoke_status.time_final = Date.now();
 	    invoke_status.status     = 'failed';
 	    return Promise.resolve(invoke_status);
 	});
@@ -644,7 +644,7 @@ function querybycontext(context, id, version, name) {
         id           : tx_id.getTransactionID(),
         status       : 'created',
         time_create  : Date.now(),
-        time_valid   : 0,
+        time_final   : 0,
         result       : null
     };
 
@@ -672,7 +672,7 @@ function querybycontext(context, id, version, name) {
 	            }
 	        }
 
-	        invoke_status.time_valid = Date.now();
+	        invoke_status.time_final = Date.now();
 	        invoke_status.result     = responses[0];
 	        invoke_status.status     = 'success';
 	        return Promise.resolve(invoke_status);
@@ -683,7 +683,7 @@ function querybycontext(context, id, version, name) {
 	})
 	.catch((err) => {
 	    console.log('Query failed, ' + (err.stack?err.stack:err));
-	    invoke_status.time_valid = Date.now();
+	    invoke_status.time_final = Date.now();
 	    invoke_status.status     = 'failed';
 	    return Promise.resolve(invoke_status);
 	});

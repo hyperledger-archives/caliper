@@ -76,7 +76,7 @@ function getState(address) {
 	var invoke_status = {
 			status       : 'created',
 			time_create  : Date.now(),
-			time_valid   : 0,
+			time_final   : 0,
 			result       : null
 	};
 
@@ -97,7 +97,7 @@ function getState(address) {
 			let stateData = stateDataBuffer.toString('hex')
 			console.log('stateData: ' + stateData)
 
-			invoke_status.time_valid = Date.now();
+			invoke_status.time_final = Date.now();
 			invoke_status.result     = stateData;
 			invoke_status.status     = 'success';
 			return Promise.resolve(invoke_status);
@@ -123,7 +123,7 @@ function submitBatches(batchBytes) {
 		id           : 0,
 		status       : 'created',
 		time_create  : Date.now(),
-		time_valid   : 0,
+		time_final   : 0,
 		time_endorse : 0,
 		time_order   : 0,
 		result       : null
@@ -214,7 +214,7 @@ function getBatchStatusByRequest(resolve, statusLink, invoke_status, intervalID,
 		if (hasPending != true){
 			console.log('invoke_status.status success')
 			invoke_status.status = 'success';
-			invoke_status.time_valid = Date.now();
+			invoke_status.time_final = Date.now();
 			clearInterval(intervalID)
 			clearTimeout(timeoutID)
 			return resolve(invoke_status);
@@ -247,14 +247,11 @@ function calculateAddresses(family, args) {
 	const INT_KEY_NAMESPACE = _hash(family).substring(0, 6)
 	let addresses = []
 
-	for (let index in args){
-		let arg = args[index]
-		for(let key in arg) {
-			console.log('key: ' + key)
-			console.log('arg[key]: ' + arg[key])
-			let address = INT_KEY_NAMESPACE + _hash(arg[key]).slice(-64)
-			addresses.push(address)        	
-		}
+	for (let key in args){
+//			console.log('key: ' + key)
+//			console.log('arg[key]: ' + arg[key])
+	    let address = INT_KEY_NAMESPACE + _hash(args[key]).slice(-64)
+		addresses.push(address)
 	}
 	return addresses
 }
@@ -275,14 +272,7 @@ function createBatch(contractID, contractVer, addresses, args) {
 		payloadEncoder: cbor.encode
 	})
 
-	let states = {}	
-	for (let index in args){
-		let arg = args[index]
-		for(let key in arg) {
-			states[key] = arg[key]       	
-		}
-	}
-	const txn = encoder.create(states)	
+	const txn = encoder.create(args)
 
 	const {BatchEncoder} = require('sawtooth-sdk')
 	const batcher = new BatchEncoder(privateKey)

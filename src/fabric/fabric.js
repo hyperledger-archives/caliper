@@ -75,11 +75,8 @@ class Fabric extends BlockchainInterface{
 
     invokeSmartContract(context, contractID, contractVer, args, timeout) {
         var simpleArgs = [];
-        for(let i in args) {
-            let arg = args[i];
-            for(let key in arg) {
-                simpleArgs.push(arg[key]);
-            }
+        for(let key in args) {
+            simpleArgs.push(args[key]);
         }
         return e2eUtils.invokebycontext(context, contractID, contractVer, simpleArgs, timeout);
     }
