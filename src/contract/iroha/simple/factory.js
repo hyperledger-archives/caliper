@@ -15,6 +15,8 @@ var simple = function(version, context, args) {
         switch(args.verb) {
         case 'open':
             return open(context, args.account, args.money);
+        case 'query':
+            return query(context, args.key)
         default:
             throw new Error("Unknown verb for 'simple' contract");
         }
@@ -33,17 +35,26 @@ module.exports.contracts = {
 function open(context, domain, money) {
     return [
         {
-            type: irohaType.txType['CREATE_DOMAIN'],
+            tx: irohaType.txType['CREATE_DOMAIN'],
             args: [domain, 'user']
         },
         {
-            type: irohaType.txType['CREATE_ASSET'],
+            tx: irohaType.txType['CREATE_ASSET'],
             args: ['rmb', domain, 0]
         },
         {
-            type: irohaType.txType['ADD_ASSET_QUANTITY'],
+            tx: irohaType.txType['ADD_ASSET_QUANTITY'],
             args: [context.id, 'rmb#'+domain, money]
         }
     ];
+}
+
+function query(context, key) {
+    return [
+        {
+            tx: irohaType.txType['GET_ASSET_INFO'],
+            args: ['rmb#'+key]
+        }
+    ]
 }
 

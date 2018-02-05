@@ -10,13 +10,18 @@
   "test": {
     "clients": {
       "type": "local",
-      "number": 1
+      "number": 5
     },
     "rounds": [{
         "label" : "open",
-        "txNumbAndTps" : [[1,1]],
+        "txNumbAndTps" : [[500,50]],
         "arguments": {  "money": 10000 },
         "callback" : "benchmark/simple/open.js"
+      },
+      {
+        "label" : "query",
+        "txNumbAndTps" : [[500,50]],
+        "callback" : "benchmark/simple/query.js"
       }]
   },
   "monitor": {

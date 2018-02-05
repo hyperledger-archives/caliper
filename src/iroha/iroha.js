@@ -112,15 +112,15 @@ class Iroha extends BlockchainInterface{
                             });
                 // build create account transaction
                 let commands = [{
-                                    type: irohaType.txType['CREATE_ACCOUNT'],
+                                    tx: irohaType.txType['CREATE_ACCOUNT'],
                                     args: [name, domain, keys.publicKey()]
                                },
                                {
-                                    type: irohaType.txType['APPEND_ROLE'],
+                                    tx: irohaType.txType['APPEND_ROLE'],
                                     args: [id, 'admin']
                                },
                                {
-                                    type: irohaType.txType['APPEND_ROLE'],
+                                    tx: irohaType.txType['APPEND_ROLE'],
                                     args: [id, 'moneyadm']
                                },];
                 console.log('Create account for ' + id);
@@ -146,7 +146,7 @@ class Iroha extends BlockchainInterface{
                                                        queryCounter,
                                                        adminKeys,
                                                        [{
-                                                            type: irohaType.txType['GET_ACCOUNT'],
+                                                            tx: irohaType.txType['GET_ACCOUNT'],
                                                             args: [acc.id]
                                                        }],
                                                        (response) => {
@@ -230,8 +230,8 @@ class Iroha extends BlockchainInterface{
                 contexts[args.id]['contract'] = fakeContracts;
             }
 
-            this.grpcCommandClient = new endpointGrpc.CommandServiceClient(node.torii, grpc.credentials.createInsecure());
-            this.grpcQueryClient   = new endpointGrpc.QueryServiceClient(node.torii, grpc.credentials.createInsecure());
+            this.grpcCommandClient = new endpointGrpc.CommandServiceClient(contexts[args.id]['torii'], grpc.credentials.createInsecure());
+            this.grpcQueryClient   = new endpointGrpc.QueryServiceClient(contexts[args.id]['torii'], grpc.credentials.createInsecure());
             this.statusWaiting     = {};
             var self = this;
             function getStatus() {
@@ -327,7 +327,7 @@ class Iroha extends BlockchainInterface{
                 result       : null
             };
             var key;
-            if(irohaType.commandOrQuery(commands[0].type) === 0) {
+            if(irohaType.commandOrQuery(commands[0].tx) === 0) {
                 p = new Promise((resolve, reject)=>{
                     let counter = context.txCounter;
                     key = context.id+'_command_'+counter;
@@ -347,14 +347,14 @@ class Iroha extends BlockchainInterface{
                                (response) => {
                                    status.status = 'success';
                                    status.time_final = Date.now();
-                                   resolve();  // TODO: should check the response??
+                                   resolve(status);  // TODO: should check the response??
                                }
                     )
                     .catch((err)=>{
                         console.log(err);
                         status.status = 'failed';
                         status.time_final = Date.now();
-                        resolve();
+                        resolve(status);
                     });
                 });
             }
@@ -368,8 +368,44 @@ class Iroha extends BlockchainInterface{
     }
 
     queryState(context, contractID, contractVer, key) {
-        // todo
-        return Promise.resolve();
+        try {
+            if(!context.contract.hasOwnProperty(contractID)) {
+                throw new Error('Could not find contract named ' + contractID);
+            }
+
+            var commands = context.contract[contractID](contractVer, context, {verb: 'query', key: key});
+            if(commands.length === 0) {
+                throw new Error('Empty output of contract ' + contractID);
+            }
+            var status = {
+                id           : null,
+                status       : 'created',
+                time_create  : Date.now(),
+                time_final   : 0,
+                result       : null
+            };
+            return new Promise((resolve, reject)=>{
+                let counter = context.queryCounter;
+                context.queryCounter++;
+                irohaQuery(this.grpcQueryClient, context.id, Date.now(), counter, context.keys, commands,
+                           (response) => {
+                               status.status = 'success';
+                               status.time_final = Date.now();
+                               resolve(status);  // TODO: should check the response??
+                           }
+                )
+                .catch((err)=>{
+                    console.log(err);
+                    status.status = 'failed';
+                    status.time_final = Date.now();
+                    resolve(status);
+                });
+            });
+        }
+        catch(err) {
+            console.log(err);
+            return Promise.reject();
+        }
     }
 
     _findNode() {
@@ -389,10 +425,6 @@ class Iroha extends BlockchainInterface{
 }
 module.exports = Iroha;
 
-function errorInvalidArgs(type, expectedNum, actualNum) {
-    return new Error('Wrong arguments number for ' + irohaType.getTxTypeName(type) + ' : expected ' + expectedNum + ' , got ' + actualNum);
-}
-
 function irohaCommand(client, account, time, counter, keys, commands) {
     try {
          var tx = txBuilder.creatorAccountId(account)
@@ -401,44 +433,12 @@ function irohaCommand(client, account, time, counter, keys, commands) {
          var txHash;
          return commands.reduce((prev, command) => {
             return prev.then((trans) => {
-                let type = command.type;
+                let tx   = command.tx;
                 let args = command.args;
-                let expectedArgs = 0;
-                switch(type) {
-                    case irohaType.txType['ADD_ASSET_QUANTITY']:
-                        expectedArgs = 3;
-                        if(args.length === 3) {
-                            return Promise.resolve(trans.addAssetQuantity(args[0], args[1], args[2]));
-                        }
-                        break;
-                    case irohaType.txType['APPEND_ROLE']:
-                        expectedArgs = 2;
-                        if(args.length === 2) {
-                            return Promise.resolve(trans.appendRole(args[0], args[1]));
-                        }
-                        break;
-                    case irohaType.txType['CREATE_ACCOUNT']:
-                        expectedArgs = 3;
-                        if(args.length === 3) {
-                           return Promise.resolve(trans.createAccount(args[0], args[1], args[2]));
-                        }
-                        break;
-                    case irohaType.txType['CREATE_ASSET']:
-                        expectedArgs = 3;
-                        if(args.length === 3) {
-                           return Promise.resolve(trans.createAsset(args[0], args[1], args[2]));
-                        }
-                        break;
-                    case irohaType.txType['CREATE_DOMAIN']:
-                        expectedArgs = 2;
-                        if(args.length === 2) {
-                           return Promise.resolve(trans.createDomain(args[0], args[1]));
-                        }
-                        break;
-                    default:
-                        return Promise.reject(new Error('Unimplemented command:' + irohaType.getTxTypeName(command.type)));
+                if(args.length !== tx.argslen) {
+                    return Promise.reject(new Error('Wrong arguments number for ' + tx.fn + ' : expected ' + tx.argslen + ' , got ' + args.length));
                 }
-                return Promise.reject(errorInvalidArgs(type, expectedArgs, args.length));
+                return Promise.resolve(trans[tx.fn].apply(trans, args));
             });
          }, Promise.resolve(tx))
          .then((transaction) => {
@@ -480,20 +480,12 @@ function irohaQuery(client, account, time, counter, keys, commands, callback) {
         var query = queryBuilder.creatorAccountId(account)
                                 .createdTime(time)
                                 .queryCounter(counter);
-        var type = queryCommand.type;
+        var tx   = queryCommand.tx;
         var args = queryCommand.args;
-        switch(type) {
-            case irohaType.txType['GET_ACCOUNT']:
-                if(args.length === 1) {
-                    query = query.getAccount(args[0]);
-                }
-                else{
-                    throw errorInvalidArgs(type, 1, args.length);
-                }
-                break;
-            default:
-                throw new Error('Unimplemented query:' + irohaType.getTxTypeName(type));
+        if(args.length !== tx.argslen) {
+            throw new Error('Wrong arguments number for ' + tx.fn + ' : expected ' + tx.argslen + ' , got ' + args.length);
         }
+        query = query[tx.fn].apply(query, args);
         query = query.build();
         var queryBlob  = protoQueryHelper.signAndAddSignature(query, keys).blob();
         var queryArray = blob2array(queryBlob);
