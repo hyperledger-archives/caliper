@@ -103,6 +103,7 @@ function doTest(msg) {
             txUpdate();
         }
     };
+    console.log('do test with:', msg);
     return blockchain.getContext(msg.label, msg.clientargs)
     .then((context) => {
         bcContext = context;
@@ -141,10 +142,21 @@ function doTest(msg) {
         return cb.end(results);
     })
     .then( (out) => {
+        // conditionally trim beginning and end results for this test run
+        if (msg.trim) {            
+            let trim;
+            if(msg.duration) {
+                // Considering time based number of transactions
+                trim = msg.trim * msg.tps;             
+            } else {
+                // Considering set number of transactions
+                trim = msg.trim;
+            }
+            let safeCut = (2 * trim) < results.length ? trim : results.length;
+            results = results.slice(safeCut, results.length - safeCut);
+        }
+
         var stats = blockchain.getDefaultTxStats(results);
-            /* obsoleted if(msg.hasOwnProperty('out') && typeof out !== 'undefined') {
-                stats.out[0] = { key: msg['out'], value : out};
-            }*/
         return Promise.resolve(stats);
     })
     .catch( (err) => {

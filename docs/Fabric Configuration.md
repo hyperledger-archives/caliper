@@ -57,7 +57,7 @@ The fabric configuration is a json file which defines a fabric object with six m
 }
 ```
 
-* **chaincodes**: defines one or more chaincodes, those chaincodes can ben installed and instantiated on all peers of the specific channel by calling *Blockchain.installSmartContract()* function.
+* **chaincodes**: defines one or more chaincodes, those chaincodes can be installed and instantiated on all peers of the specific channel by calling *Blockchain.installSmartContract()* function.
 ```json
 {
   "chaincodes": [
