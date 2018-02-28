@@ -85,6 +85,9 @@ function startTest(number, message, clientArgs, updates, results) {
     if(count === number) {  // already launched clients
         let txPerClient;
         let tpsPerClient = Math.floor(message.tps / number);
+        if(tpsPerClient < 1) {
+            tpsPerClient = 1;
+        }
         if (message.numb) {
             // Run specified number of transactions
             txPerClient  = Math.floor(message.numb / number);
@@ -102,9 +105,6 @@ function startTest(number, message, clientArgs, updates, results) {
         
         if(txPerClient < 1) {
             txPerClient = 1;
-        }
-        if(tpsPerClient < 1) {
-            tpsPerClient = 1;
         }
         message.numb = txPerClient;
         message.tps  = tpsPerClient;
