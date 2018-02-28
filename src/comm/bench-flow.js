@@ -22,7 +22,7 @@ var Monitor = require('./monitor.js');
 var Report  = require('./report.js');
 var Client  = require('./client/client.js');
 var blockchain, monitor, report, client;
-var resultsbyround = [];    // processed output of each test round
+var resultsbyround = [];    // results table for each test round
 var round = 0;              // test round
 //var cache = {};             // memory cache to store defined output from child process, so different test case could exchange data if needed
                              // this should only be used to exchange small amount of data
@@ -359,7 +359,12 @@ function processResult(results, opt){
             resultTable[1] = getResultValue(r);
         }
 
-        resultsbyround.push(r);
+        if(resultsbyround.length === 0) {
+            resultsbyround.push(resultTable[0].slice(0));
+        }
+        if(resultTable.length > 1) {
+            resultsbyround.push(resultTable[1].slice(0));
+        }
         console.log('###test result:###');
         printTable(resultTable);
         var idx = report.addBenchmarkRound(opt);
@@ -392,8 +397,8 @@ function printTable(value) {
 * @return {Array}, result table's title
 */
 function getResultTitle() {
-    // return ['OPT', 'Succ', 'Fail', 'Send Rate', 'Max Delay', 'Min Delay', 'Avg Delay', 'Max Throughput', 'Min Throughput', 'Avg Throughput'];
-    return ['Name', 'Succ', 'Fail', 'Send Rate', 'Max Delay', 'Min Delay', 'Avg Delay', 'Throughput'];
+    // TODO: allow configure percentile value
+    return ['Name', 'Succ', 'Fail', 'Send Rate', 'Max Delay', 'Min Delay', 'Avg Delay', '75%ile Delay', 'Throughput'];
 }
 
 /**
@@ -402,29 +407,31 @@ function getResultTitle() {
 * @return {Array}, formatted result table's values
 */
 function getResultValue(r) {
-    var min = 1000000, max = 0, sum = 0;
-    for(let v in r.throughput) {
-        let t = r.throughput[v];
-        if(t < min) {
-            min = t;
+    var row = [];
+    try {
+        row.push(r.opt);
+        row.push(r.succ);
+        row.push(r.fail);
+        (r.create.max === r.create.min) ? row.push((r.succ + r.fail) + ' tps') : row.push(((r.succ + r.fail) / (r.create.max - r.create.min)).toFixed(0) + ' tps');
+        row.push(r.delay.max.toFixed(2) + ' s');
+        row.push(r.delay.min.toFixed(2) + ' s');
+        row.push((r.delay.sum / r.succ).toFixed(2) + ' s');
+        if(r.delay.detail.length === 0) {
+            row.push('N/A');
         }
-        if(t > max) {
-            max = t;
+        else{
+            r.delay.detail.sort(function(a, b) {
+                return a-b;
+            });
+            row.push(r.delay.detail[Math.floor(r.delay.detail.length * 0.75)].toFixed(2) + ' s');
         }
-        sum += t;
+
+        (r.final.max === r.final.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.final.max - r.create.min)).toFixed(0)) + ' tps');
+    }
+    catch (err) {
+        row = [r.opt, 0, 0, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'];
     }
 
-    var row = [];
-    row.push(r.opt);
-    row.push(r.succ);
-    row.push(r.fail);
-    (r.create.max === r.create.min) ? row.push((r.succ + r.fail) + ' tps') : row.push(((r.succ + r.fail) / (r.create.max - r.create.min)).toFixed(0) + ' tps');
-    row.push(r.delay.max.toFixed(2) + ' s');
-    row.push(r.delay.min.toFixed(2) + ' s');
-    row.push((r.delay.sum / r.succ).toFixed(2) + ' s');
-//    row.push(max.toString() + ' tps');
-//    row.push(min.toString() + ' tps');
-    (r.final.max === r.final.min) ? row.push(r.succ + ' tps') : row.push(((r.succ / (r.final.max - r.create.min)).toFixed(0)) + ' tps');
     return row;
 }
 
@@ -432,20 +439,14 @@ function getResultValue(r) {
 * print the performance testing results of all test rounds
 */
 function printResultsByRound() {
-    var resultTable = [];
-    var title = getResultTitle();
-    title.unshift('Test');
-    resultTable[0] = title;
-
-    for(let i = 0 ; i < resultsbyround.length ; i++) {
-        var row = getResultValue(resultsbyround[i]);
-        row.unshift(i);
-        resultTable.push(row);
+    resultsbyround[0].unshift('Test');
+    for(let i = 1 ; i < resultsbyround.length ; i++) {
+        resultsbyround[i].unshift(i.toFixed(0));
     }
     console.log('###all test results:###');
-    printTable(resultTable);
+    printTable(resultsbyround);
 
-    report.setSummaryTable(resultTable);
+    report.setSummaryTable(resultsbyround);
 }
 
 function sleep(ms) {

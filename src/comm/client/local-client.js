@@ -64,7 +64,7 @@ function txUpdate() {
         newStats = bc.createNullDefaultTxStats();
     }
     else {
-        newStats = blockchain.getDefaultTxStats(newResults);
+        newStats = blockchain.getDefaultTxStats(newResults, false);
     }
     process.send({type: 'txUpdated', data: {submitted: newNum, committed: newStats}});
 }
@@ -156,7 +156,7 @@ function doTest(msg) {
             results = results.slice(safeCut, results.length - safeCut);
         }
 
-        var stats = blockchain.getDefaultTxStats(results);
+        var stats = blockchain.getDefaultTxStats(results, true);
         return Promise.resolve(stats);
     })
     .catch( (err) => {
