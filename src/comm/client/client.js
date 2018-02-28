@@ -243,25 +243,27 @@ var Client = class {
 
     _startZooTest(message, clientArgs) {
         var number = this.zoo.hosts.length;
-        var txPerClient;
         if (message.numb) {
             // Run specified number of transactions
-            txPerClient  = Math.floor(message.numb / number);
+            message.numb  = Math.floor(message.numb / number);
+            if(message.numb < 1) {
+                message.numb = 1;
+            }
+            // trim should be based on client number if specified with txNumbAndTps
+            if (message.trim) {
+                message.trim = Math.floor(message.trim / number);
+            }
         } else if (message.duration) {
             // Run each client for time specified duration       
-            txPerClient  = Math.floor(message.duration * message.tps);
+            // do nothing
         } else {
             return reject(new Error('Unconditioned transaction rate driving mode'));
         }
 
         var tpsPerClient = Math.floor(message.tps / number);
-        if(txPerClient < 1) {
-            txPerClient = 1;
-        }
         if(tpsPerClient < 1) {
             tpsPerClient = 1;
         }
-        message.numb = txPerClient;
         message.tps  = tpsPerClient;
         message['clients'] = this.zoo.clientsPerHost;
         return this._sendZooMessage(message, clientArgs)
