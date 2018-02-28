@@ -132,23 +132,24 @@ var Blockchain = class {
     *     fail : ,                            // number of failed txs
     *     create : {min: , max: },            // min/max time of tx created, in second
     *     final  : {min: , max: },            // min/max time of tx becoming final, in second
-    *     delay  : {min: , max: , sum: },     // min/max/sum time of txs' processing delay,  in second
-    *     throughput : {time: ,...},          // tps of each time slot
+    *     delay  : {min: , max: , sum: , detail:[...]},     // min/max/sum time of txs' processing delay,  in second
+    *     // obsoleted throughput : {time: ,...},          // tps of each time slot
     *     out : []                            // user defined output data
-    *     // others: {object}                 // blockchain platform specific values
+    *     // obsoleted others: {object}                 // blockchain platform specific values
     * }
     */
     /**
     * generate and return the default statistics of transactions
     * @ results {Array}, results of 'invoke'/'query' transactions
+    * @ detail {Boolean}, whether to keep detailed delay history
     * @ return {Promise.resolve(txStatistics)}
     */
     // TODO: should be moved to a dependent 'analyser' module in which to do all result analysing work
-    getDefaultTxStats(results) {
+    getDefaultTxStats(results, detail) {
         var succ = 0, fail = 0, delay = 0;
         var minFinal, maxFinal, minCreate, maxCreate;
         var minDelay = 100000, maxDelay = 0;
-        var throughput = {};
+        var delays = [];
         for(let i = 0 ; i < results.length ; i++) {
             let stat   = results[i];
             let create = stat['time_create'];
@@ -191,12 +192,8 @@ var Blockchain = class {
                     maxDelay = d;
                 }
 
-                let idx = Math.round(final).toString();
-                if(typeof throughput[idx] === 'undefined') {
-                    throughput[idx] = 1;
-                }
-                else {
-                    throughput[idx] += 1;
+                if(detail) {
+                    delays.push(d);
                 }
             }
             else {
@@ -209,15 +206,9 @@ var Blockchain = class {
             'fail' : fail,
             'create' : {'min' : minCreate/1000, 'max' : maxCreate/1000},    // convert to second
             'final'  : {'min' : minFinal/1000,  'max' : maxFinal/1000 },
-            'delay'  : {'min' : minDelay,  'max' : maxDelay, 'sum' : delay },
-            'throughput' : throughput,
+            'delay'  : {'min' : minDelay,  'max' : maxDelay, 'sum' : delay, 'detail': (detail?delays:[]) },
             'out' : []
         };
-
-        /*if(this.bcObj.getDefaultTxStats !== 'undefined') {
-            this.bcObj.getDefaultTxStats(stats, results);
-        }*/
-
         return stats;
     }
 
@@ -228,7 +219,7 @@ var Blockchain = class {
     */
     static mergeDefaultTxStats(results) {
         try{
-            // skip null result
+            // skip invalid result
             var skip = 0;
             for(let i = 0 ; i < results.length ; i++) {
                 let result = results[i];
@@ -273,13 +264,8 @@ var Blockchain = class {
                     r.delay.max = v.delay.max;
                 }
                 r.delay.sum += v.delay.sum;
-                for(let j in v.throughput) {
-                    if(typeof r.throughput[j] === 'undefined') {
-                        r.throughput[j] = v.throughput[j];
-                    }
-                    else {
-                        r.throughput[j] += v.throughput[j];
-                    }
+                for(let j = 0 ; j < v.delay.detail.length ; j++) {
+                    r.delay.detail.push(v.delay.detail[j]);
                 }
             }
             return 1;
