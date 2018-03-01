@@ -49,13 +49,15 @@ Below is a benchmark configuration file example:
     },
     "rounds": [{
         "label" : "open",
-        "txNumbAndTps" : [[5000,100], [5000,200], [5000,300]],
+        "txNumber" : [5000, 5000, 5000],
+        "rateControl" : [{"type": "fixed-rate", "opts": {"tps" : 100}}, {"type": "fixed-rate", "opts": {"tps" : 200}}, {"type": "fixed-rate", "opts": {"tps" : 300}}],
         "arguments": {  "money": 10000 },
         "callback" : "benchmark/simple/open.js"
       },
       {
         "label" : "query",
-        "txNumbAndTps" : [[5000,300], [5000,400]],
+        "txNumber" : [5000, 5000],
+        "rateControl" : [{"type": "fixed-rate", "opts": {"tps" : 300}}, {"type": "fixed-rate", "opts": {"tps" : 400}}],
         "callback" : "benchmark/simple/query.js"
       }]
   },
@@ -92,9 +94,10 @@ Below is a benchmark configuration file example:
       }
       ```
   * **label** : hint for the test. For example, you can use the transaction name as the label name to tell which transaction is mainly used to test the performance. The value is also used as the context name for *blockchain.getContext()*. For example, developers may want to test performance of different Fabric channels, in that case, tests with different label can be bound to different fabric channels.  
-  * **txNumbAndTps** : defines an array of sub-rounds with different transaction numbers or transaction generating speed. For example, [5000,400] means totally 5000 transactions will be generated and invoked at a speed of 400 transactions per second. In above example, actually 5 (not 2) test rounds are defined.
-  * **durationAndTps** : defines an array of sub-rounds with time based test runs. For example [150,400] means a performance test will run for 150 seconds, driven at a rate of 400 transactions per second. If specified in addition to txNumbAndTps, the durationTpsAndTrim option will take precedence. 
-  * **trim** : performs a trimming operation on the client results to eliminate the warm-up and cool-down phase being included within tests reports. If specified, the trim option will respect the round measurement. For example, if `txNumbAndTps` is the driving test mode the a value of 30 means the initial and final 30 transactions of the results from each client will be ignored when generating result statistics; if `durationAndTps` is being used, the the initial and final 30seconds of the the results fromeach client will be ignored.
+  * **txNumber** : defines an array of sub-rounds with different transaction numbers to be run in each round. For example, [5000,400] means totally 5000 transactions will be generated in the first round and 400 will be generated in the second. 
+  * **txDuration** : defines an array of sub-rounds with time based test runs. For example [150,400] means two runs will be made, the first test will run for 150 seconds, and the second will run for 400 seconds. If specified in addition to txNumber, the txDuration option will take precedence.
+  * **rateControl** : defines an array of custom rate controls to use during the benchmarking test sub-rounds. If not specified will default to 'fixed-rate' that will drive the benchmarking at a set 1 TPS rate. If defined, the rate control mechanism must exist, and may be provided with options to use to control the rate at which messages are sent, or to specify a message rate profile. For example `"rateControl" : [{"type": "my-rate-control", "opts": {"opt1" : x, "opt2" : [a,b,c]}}]` will use the rate controller `my-rate-control` and pass it the `opts` object that will be available for use within the rate controller for custom actions. Each round, specified within **txNumber** or **txDuration** must have a corresponding rate control item within the **rateControl** array.
+  * **trim** : performs a trimming operation on the client results to eliminate the warm-up and cool-down phase being included within tests reports. If specified, the trim option will respect the round measurement. For example, if `txNumber` is the driving test mode the a value of 30 means the initial and final 30 transactions of the results from each client will be ignored when generating result statistics; if `txDuration` is being used, the the initial and final 30seconds of the the results from each client will be ignored.
   * **arguments** : user defined arguments which will be passed directly to the user defined test module. 
   * **callback** : specifies the user defined module used in this test round. Please see [User defined test module](#user-defined-test-module) to learn more details.
 * **monitor** - defines the type of resource monitors and monitored objects, as well as the time interval for the monitoring.

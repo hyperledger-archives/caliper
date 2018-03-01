@@ -6,12 +6,12 @@
     "url": "https://github.com/Huawei-OSG/caliper"
   },
   "scripts": {
-    "test" : "node ./scripts/test.js",
-    "list" : "node ./scripts/list.js",
+    "test": "node ./scripts/test.js",
+    "list": "node ./scripts/list.js",
     "startclient": "node ./src/comm/client/zoo-client.js"
   },
   "engines": {
-    "node": ">=4.5.0",
+    "node": ">=8.0.0",
     "npm": ">=2.15.9"
   },
   "engine-strict": true,

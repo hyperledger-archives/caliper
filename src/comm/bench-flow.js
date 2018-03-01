@@ -188,8 +188,8 @@ function createReport() {
     try{
         var r = 0;
         for(let i = 0 ; i < config.test.rounds.length ; i++) {
-            if(config.test.rounds[i].hasOwnProperty('txNumbAndTps')) {
-                r += config.test.rounds[i].txNumbAndTps.length;
+            if(config.test.rounds[i].hasOwnProperty('txNumber')) {
+                r += config.test.rounds[i].txNumber.length;
             }
         }
         report.addMetadata('Test Rounds', r);
@@ -220,14 +220,14 @@ function defaultTest(args, clientArgs, final) {
         var t = global.tapeObj;
         t.comment('\n\n###### testing \'' + args.label + '\' ######');
         var testLabel   = args.label;
-        var testRounds  = args.durationAndTps ? args.durationAndTps : args.txNumbAndTps;
+        var testRounds  = args.txDuration ? args.txDuration : args.txNumber;
         var tests = []; // array of all test rounds
         var configPath = path.relative(absCaliperDir, absNetworkFile);
         for(let i = 0 ; i < testRounds.length ; i++) {
             let msg = {
                 type: 'test',
                 label : args.label,
-                tps:  testRounds[i][1],
+                rateControl: args.rateControl[i] ? args.rateControl[i] : {type:'fixed-rate', 'opts' : {'tps': 1}},
                 trim: args.trim ? args.trim : 0,
                 args: args.arguments,
                 cb  : args.callback,
@@ -235,10 +235,10 @@ function defaultTest(args, clientArgs, final) {
              };
   
             // condition for time based or number based test driving
-            if (args.txNumbAndTps) {
-                msg.numb = testRounds[i][0];
-            } else if (args.durationAndTps) {
-                msg.duration = testRounds[i][0]
+            if (args.txNumber) {
+                msg.numb = testRounds[i];
+            } else if (args.txDuration) {
+                msg.txDuration = testRounds[i]
             } else {
                 return reject(new Error('Unspecified test driving mode'));
             }

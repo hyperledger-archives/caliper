@@ -11,6 +11,8 @@
 /* global variables */
 var path  = require('path');
 var bc    = require('../blockchain.js');
+var RateControl = require('../rate-control/rateControl.js');
+var sleep = require('../sleep.js');
 
 /**
  * Message handler
@@ -88,13 +90,13 @@ function beforeTest() {
 }
 
 function doTest(msg) {
-    blockchain = new bc(path.join(__dirname, '../../..', msg.config));
-    var cb = require(path.join(__dirname, '../../..', msg.cb));
-    var bcContext;
+    console.log('doTest() with:', msg);
+    let cb = require(path.join(__dirname, '../../..', msg.cb));
+    blockchain = new bc(path.join(__dirname, '../../..', msg.config));    
 
     beforeTest();
     // start a interval to report results repeatedly
-    var txUpdateInter = setInterval(txUpdate, txUpdateTime);
+    let txUpdateInter = setInterval(txUpdate, txUpdateTime);
     var clearUpdateInter = function () {
         // stop reporter
         if(txUpdateInter) {
@@ -103,51 +105,26 @@ function doTest(msg) {
             txUpdate();
         }
     };
-    console.log('do test with:', msg);
+    
     return blockchain.getContext(msg.label, msg.clientargs)
     .then((context) => {
-        bcContext = context;
-        var rounds   = Array(msg.numb).fill(0);
-        var promises = [];
-        var idx       = 0;
-        var start;
-        var initComplete = false;
-        var sleepTime = (msg.tps > 0) ? 1000/msg.tps : 0;
-
-        console.log('Info: client ' + process.pid +  ' start test ' + (cb.info ? (':' + cb.info) : ''));
-        return rounds.reduce(function(prev, item) {
-            return prev.then( () => {
-                txNum++;        // TODO: fix, wrong number if run() creates multiple transactions
-                promises.push(cb.run().then((result)=>{
-                    addResult(result);
-                    return Promise.resolve();
-                }));
-                idx++;
-                if (!initComplete) {
-                     initComplete = true;
-                     start = Date.now();
-                }
-                return rateControl(sleepTime, start, idx);
-            });
-        }, cb.init(blockchain, context, msg.args))
-        .then( () => {
-            return Promise.all(promises);
-        })
-        .then(()=>{
-            return blockchain.releaseContext(bcContext);
-        })
+       if (msg.txDuration) {
+           return runDuration(msg, cb, context);
+       } else {
+           return runFixedNumber(msg, cb, context);
+       }
     })
-    .then( () => {
+    .then(() => {
         clearUpdateInter();
         return cb.end(results);
     })
-    .then( (out) => {
+    .then(() => {
         // conditionally trim beginning and end results for this test run
         if (msg.trim) {            
             let trim;
-            if(msg.duration) {
-                // Considering time based number of transactions
-                trim = msg.trim * msg.tps;             
+            if (msg.txDuration) {
+                // Considering time based number of transactions 
+                trim = Math.floor(msg.trim * (results.length / msg.txDuration));
             } else {
                 // Considering set number of transactions
                 trim = msg.trim;
@@ -159,33 +136,55 @@ function doTest(msg) {
         var stats = blockchain.getDefaultTxStats(results, true);
         return Promise.resolve(stats);
     })
-    .catch( (err) => {
+    .catch((err) => {
         clearUpdateInter();
         console.log('Client ' + process.pid + ': error ' + (err.stack ? err.stack : err));
         return Promise.reject(err);
     });
 }
 
-/**
-* Sleep a suitable time according to the required transaction generation time
-* @timePerTx {number}, time interval for transaction generation
-* @start {number}, generation time of the first transaction
-* @txSeq {number}, sequence number of the current transaction
-* @return {promise}
-*/
-function rateControl(timePerTx, start, txSeq) {
-    if(timePerTx === 0) {
-        return Promise.resolve();
+async function runFixedNumber(msg, cb, context) {    
+    console.log('Info: client ' + process.pid +  ' start test runFixedNumber()' + (cb.info ? (':' + cb.info) : ''));
+    var rounds   = Array(msg.numb).fill(0);
+    const rateControl = new RateControl(msg.rateControl, blockchain);
+    rateControl.init(msg);
+    
+    await cb.init(blockchain, context, msg.args);
+    const start = Date.now();
+    
+    let promises = [];
+    for (let i = 0 ; i < rounds.length ; i++) {
+        promises.push(cb.run().then((result) => {
+            addResult(result);
+            return Promise.resolve();
+        }));
+        // Increment on txNum as is a global var used in txUpdate()
+        await rateControl.applyRateControl(start, txNum++, results);
     }
-    var diff = Math.floor(timePerTx * txSeq - (Date.now() - start));
-    if( diff > 10) {
-        return sleep(diff);
-    }
-    else {
-        return Promise.resolve();
-    }
+
+    await Promise.all(promises);
+    return await blockchain.releaseContext(context);
 }
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+async function runDuration(msg, cb, context) {
+    console.log('Info: client ' + process.pid +  ' start test runDuration()' + (cb.info ? (':' + cb.info) : ''));
+    var rateControl = new RateControl(msg.rateControl, blockchain);
+    rateControl.init(msg);
+    const duration = msg.txDuration; // duration in seconds   
+    
+    await cb.init(blockchain, context, msg.args);
+    const start = Date.now();
+    
+    let promises = [];
+    while ((Date.now() - start)/1000 < duration) {
+        promises.push(cb.run().then((result) => {
+            addResult(result);
+            return Promise.resolve();
+        }));
+        // Increment on txNum as is a global var used in txUpdate()
+        await rateControl.applyRateControl(start, txNum++, results);
+    }
+
+    await Promise.all(results);
+    return await blockchain.releaseContext(context);    
 }

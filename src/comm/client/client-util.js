@@ -78,36 +78,33 @@ function launchClient(message, updateCB, results) {
 }
 
 function startTest(number, message, clientArgs, updates, results) {
-    let count = 0;
+    let count = 0;    
     for (let i in processes) {
         count++;
     }
     if(count === number) {  // already launched clients
         let txPerClient;
-        let tpsPerClient = Math.floor(message.tps / number);
-        if(tpsPerClient < 1) {
-            tpsPerClient = 1;
-        }
         if (message.numb) {
             // Run specified number of transactions
             txPerClient  = Math.floor(message.numb / number);
 
-            // trim should be based on client number if specified with txNumbAndTps
+            // trim should be based on client number if specified with txNumber
             if (message.trim) {
                 message.trim = Math.floor(message.trim / number);
             }
-        } else if (message.duration) {
-            // Run for time specified duration based on tps per client     
-            txPerClient  = Math.floor(message.duration * tpsPerClient);
+
+            if(txPerClient < 1) {
+                txPerClient = 1;
+            }
+            message.numb = txPerClient;
+        } else if (message.txDuration) {
+            // Run for time specified txDuration based on clients
+            // Do nothing, we run for the time specified within message.txDuration
         } else {
             return reject(new Error('Unconditioned transaction rate driving mode'));
         }
         
-        if(txPerClient < 1) {
-            txPerClient = 1;
-        }
-        message.numb = txPerClient;
-        message.tps  = tpsPerClient;
+        message.clients = number;
 
         let promises = [];
         let idx = 0;
