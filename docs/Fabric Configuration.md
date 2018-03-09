@@ -57,7 +57,9 @@ The fabric configuration is a json file which defines a fabric object with six m
 }
 ```
 
-* **chaincodes**: defines one or more chaincodes, those chaincodes can be installed and instantiated on all peers of the specific channel by calling *Blockchain.installSmartContract()* function.
+* **chaincodes**: defines one or more chaincodes, those chaincodes can be installed and instantiated on all peers of the specific channel by calling *Blockchain.installSmartContract()* function.  
+  The *path* attribute is relative to the *caliper/src* folder, since *$GOPATH* is temporarily set to the caliper root folder during benchmark execution. If you would like to install a Golang chaincode from a previously set *$GOPATH*, then set the *OVERWRITE_GOPATH* environment variable to *FALSE* before running the benchmark:  
+  ```GOPATH=~/mygopath OVERWRITE_GOPATH=FALSE node main.js```
 ```json
 {
   "chaincodes": [
