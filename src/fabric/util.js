@@ -65,9 +65,12 @@ module.exports.storePathForOrg = function(org) {
 	return module.exports.KVS + '_' + org;
 };
 
-// temporarily set $GOPATH to the test fixture folder
+// temporarily set $GOPATH to the test fixture folder unless specified otherwise
 module.exports.setupChaincodeDeploy = function() {
-	process.env.GOPATH = path.join(__dirname, rootpath);
+    if (process.env.OVERWRITE_GOPATH === 'undefined'
+        || process.env.OVERWRITE_GOPATH.toString().toUpperCase() === 'TRUE') {
+        process.env.GOPATH = path.join(__dirname, rootpath);
+    }
 };
 
 // specifically set the values to defaults because they may have been overridden when
