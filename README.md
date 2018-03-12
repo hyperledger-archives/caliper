@@ -4,8 +4,8 @@ Caliper is a blockchain performance benchmark framework, which allows users to t
 
 Currently supported blockchain solutions:
 * [fabric 1.0.5](https://github.com/hyperledger/fabric)
-* [sawtooth](https://github.com/hyperledger/sawtooth-core) 
-* Iroha (in development...)
+* [sawtooth 0.8](https://github.com/hyperledger/sawtooth-core) 
+* [Iroha (develop branch @fcc2f7c8ceaee4f7654c3b216d65b8906a35f633)](https://github.com/hyperledger/iroha)
 
 Currently supported performance indicators:
 * Success rate
@@ -20,7 +20,8 @@ To learn more details, please refer to [Architecture introduction](docs/Architec
 ### Pre-requisites
 
 Make sure following tools are installed
-* NodeJS 6.X
+* NodeJS 6.X (higher versions may work but haven't been tested)
+* node-gyp
 * Docker
 * Docker-compose
 * Blockchain system for test
@@ -29,10 +30,10 @@ Run `npm install` to install dependencies locally
 
 ### Install blockchain SDKs
 * Fabric
-  * install with source code
+  * Install with source code
     * Clone [fabric-sdk-node](https://github.com/hyperledger/fabric-sdk-node) and run the headless tests to make sure everything is ok
     * Install **fabric-client** and **fabric-ca-client** from the SDK, e.g run `npm install path-to-sdk/fabric-client path-to-sdk/fabric-ca-client` in caliper's root folder, or just copy the `node_modules` from fabric-sdk-node project
-  * install using the repository
+  * Or install using the repository
     * run `npm install fabric-ca-client fabric-client` in the root folder
   
 * Sawtooth
@@ -43,9 +44,10 @@ Run `npm install` to install dependencies locally
   * Install dependencies
   
     ```
-    $sudo apt-get install libv8-devnpm 
-    $install google-protobuf grpc`
+    $sudo apt-get install libv8-dev 
+    $install google-protobuf grpc
     ```
+  * A precompiled Iroha library is provided in `src/iroha/external`, which is compiled with Ubuntu 14 x86_64. The library should be replaced if it is incompatible with the under platform. 
 
 ## Run benchmark
 
