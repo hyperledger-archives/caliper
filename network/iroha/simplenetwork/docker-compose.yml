@@ -2,7 +2,7 @@ version: '3'
 
 services:
   iroha_node0:
-    image: hyperledger/iroha-docker:develop
+    image: hyperledger/iroha-docker@sha256:b82a24eee7cc4215bf70d9f79acab8b817e4cf36cc9f87c1c63202dca552cf0f
     container_name: iroha_node0
     ports:
       - "50051:50051"
@@ -29,7 +29,7 @@ services:
       - SYS_PTRACE
 
   iroha_node1:
-    image: hyperledger/iroha-docker:develop
+    image: hyperledger/iroha-docker@sha256:b82a24eee7cc4215bf70d9f79acab8b817e4cf36cc9f87c1c63202dca552cf0f
     container_name: iroha_node1
     ports:
       - "50052:50051"
