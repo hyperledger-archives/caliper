@@ -68,7 +68,6 @@ const restApiUrl = 'http://127.0.0.1:8080'
 
 	function querybycontext(context, contractID, contractVer, name) {
 	const address = calculateAddress(contractID, name)
-	console.log('getState address:' + address)
 	return getState(address)
 }
 
@@ -86,16 +85,12 @@ function getState(address) {
 	}
 	return request(options)
 	.then(function(body) {
-		console.log('getState request response:')
-		console.log(body)
 		let data = (JSON.parse(body))["data"]
 
 		if (data.length > 0) {
 			let stateDataBase64 = data[0]["data"]
-			console.log('stateDataBase64: ' + stateDataBase64)
 			let stateDataBuffer = new Buffer(stateDataBase64, 'base64')
 			let stateData = stateDataBuffer.toString('hex')
-			console.log('stateData: ' + stateData)
 
 			invoke_status.time_final = Date.now();
 			invoke_status.result     = stateData;
@@ -117,8 +112,6 @@ function sleep(ms) {
 }
 
 function submitBatches(batchBytes) {
-	console.log('in submitBatches')
-
 	var invoke_status = {
 		id           : 0,
 		status       : 'created',
@@ -137,10 +130,8 @@ function submitBatches(batchBytes) {
 	}
 	return request(options)	
 	.then(function (body) {
-		console.log(body)
 		let link = JSON.parse(body).link
 		return getBatchStatus(link, invoke_status)
-//		console.log('invoke_status: ' + JSON.stringify(invoke_status))
 	})
 	.catch(function (err) {
 		console.log('Submit batches failed, ' + (err.stack?err.stack:err))
@@ -152,7 +143,6 @@ var getIndex = 0
 function getBatchStatus(link, invoke_status) {
 	getIndex++
 	let statusLink = link
-	console.log('getBatchStatus: ' + getIndex)
 	var intervalID = 0
 	var timeoutID = 0
 
@@ -168,9 +158,7 @@ function getBatchStatus(link, invoke_status) {
 	var timeout = (ms, invoke_status) => {
 		return new Promise((resolve) => {
 			timeoutID = setTimeout(function(){
-				console.log('timeout')
 				clearInterval(intervalID )
-				console.log('setTimeout invoke_status: ' + JSON.stringify(invoke_status))
 				return resolve(invoke_status);
 			}, ms)
 		})
@@ -179,11 +167,10 @@ function getBatchStatus(link, invoke_status) {
 
 	return  Promise.race([repeat(500, invoke_status), timeout(30000, invoke_status)])
 	.then(function () {
-		console.log('repeat end or timeout')
 		return Promise.resolve(invoke_status);
 	})
 	.catch(function(error) {
-//		console.log('getBatchStatus error: ' + error)
+		console.log('getBatchStatus error: ' + error)
 		return Promise.resolve(invoke_status);
 	})
 }
@@ -194,25 +181,21 @@ var requestIndex = 0
 
 function getBatchStatusByRequest(resolve, statusLink, invoke_status, intervalID, timeoutID) {
 	requestIndex++
-	console.log('getBatchStatusByRequest: ' + requestIndex)
 	var options = {
 		uri: statusLink
 	}
 	return request(options)
 	.then(function(body) {
-		console.log('request response')
 		let batchStatuses = JSON.parse(body).data
 		let hasPending = false
 		for (let index in batchStatuses){
 			let batchStatus = batchStatuses[index].status
-			console.log('batchStatus: ' + batchStatus)
 			if (batchStatus == 'PENDING'){
 				hasPending = true
 				break
 			}
 		}
 		if (hasPending != true){
-			console.log('invoke_status.status success')
 			invoke_status.status = 'success';
 			invoke_status.time_final = Date.now();
 			clearInterval(intervalID)
@@ -221,7 +204,7 @@ function getBatchStatusByRequest(resolve, statusLink, invoke_status, intervalID,
 		}
 	})
 	.catch(function (err) {
-//		console.log(err)
+		console.log(err)
 		return resolve(invoke_status);
 	})
 }
@@ -248,8 +231,6 @@ function calculateAddresses(family, args) {
 	let addresses = []
 
 	for (let key in args){
-//			console.log('key: ' + key)
-//			console.log('arg[key]: ' + arg[key])
 	    let address = INT_KEY_NAMESPACE + _hash(args[key]).slice(-64)
 		addresses.push(address)
 	}
@@ -278,7 +259,6 @@ function createBatch(contractID, contractVer, addresses, args) {
 	const batcher = new BatchEncoder(privateKey)
 
 	const batch = batcher.create([txn])
-	console.log('batch.headerSignature: ' + batch.headerSignature)
 	let link = restApiUrl + '/batch_status?id=' + batch.headerSignature 
 	const batchBytes = batcher.encode([batch])
 	return batchBytes
