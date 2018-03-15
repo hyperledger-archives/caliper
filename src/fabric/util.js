@@ -67,7 +67,7 @@ module.exports.storePathForOrg = function(org) {
 
 // temporarily set $GOPATH to the test fixture folder unless specified otherwise
 module.exports.setupChaincodeDeploy = function() {
-    if (process.env.OVERWRITE_GOPATH === 'undefined'
+    if (typeof process.env.OVERWRITE_GOPATH === 'undefined'
         || process.env.OVERWRITE_GOPATH.toString().toUpperCase() === 'TRUE') {
         process.env.GOPATH = path.join(__dirname, rootpath);
     }
