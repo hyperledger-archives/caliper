@@ -398,7 +398,7 @@ function printTable(value) {
 */
 function getResultTitle() {
     // TODO: allow configure percentile value
-    return ['Name', 'Succ', 'Fail', 'Send Rate', 'Max Delay', 'Min Delay', 'Avg Delay', '75%ile Delay', 'Throughput'];
+    return ['Name', 'Succ', 'Fail', 'Send Rate', 'Max Latency', 'Min Latency', 'Avg Latency', '75%ile Latency', 'Throughput'];
 }
 
 /**

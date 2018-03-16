@@ -9,11 +9,14 @@ Currently supported blockchain solutions:
 
 Currently supported performance indicators:
 * Success rate
-* Throughput (TPS)
-* Transaction confirmation latency
+* Transaction/Read throughput
+* Transaction/Read latency(minimum, maximum, average, percentile)
 * Resource consumption (CPU, Memory, Network IO,...)
 
-To learn more details, please refer to [Architecture introduction](docs/Architecture.md). 
+See [to add the link to PSWG] to find out the definitions and corresponding measurement methods.  
+
+##Achitecture
+See [Architecture introduction](docs/Architecture.md). 
 
 ## Build
 
