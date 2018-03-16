@@ -10,13 +10,15 @@
     },
     "rounds": [{
         "label" : "open",
-        "txNumbAndTps" : [[100,1]],
+        "txNumber" : [100],
+        "rateControl" : [{"type": "fixed-rate", "opts": {"tps" : 1}}],
         "arguments": {  "money": 10000 },
         "callback" : "benchmark/simple/open.js"
       },
       {
         "label" : "query",
-        "txNumbAndTps" : [[100, 1]],
+        "txNumber" : [100],
+        "rateControl" : [{"type": "fixed-rate", "opts": {"tps" : 1}}],
         "callback" : "benchmark/simple/query.js"
       }]
   },

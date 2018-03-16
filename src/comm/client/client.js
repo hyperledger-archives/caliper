@@ -57,7 +57,8 @@ var Client = class {
     *              type: 'test',
     *              label : label name,
     *              numb:   total number of simulated txs,
-    *              tps:    number of txs generated per second,
+    *              rateControl: rate controller to use
+    *              trim:   trim options
     *              args:   user defined arguments,
     *              cb  :   path of the callback js file,
     *              config: path of the blockchain config file   // TODO: how to deal with the local config file when transfer it to a remote client (via zookeeper), as well as any local materials like cyrpto keys??
@@ -249,22 +250,17 @@ var Client = class {
             if(message.numb < 1) {
                 message.numb = 1;
             }
-            // trim should be based on client number if specified with txNumbAndTps
+            // trim should be based on client number if specified with txNumber
             if (message.trim) {
                 message.trim = Math.floor(message.trim / number);
             }
-        } else if (message.duration) {
-            // Run each client for time specified duration       
+        } else if (message.txDuration) {
+            // Run each client for time specified txDuration       
             // do nothing
         } else {
             return reject(new Error('Unconditioned transaction rate driving mode'));
         }
-
-        var tpsPerClient = Math.floor(message.tps / number);
-        if(tpsPerClient < 1) {
-            tpsPerClient = 1;
-        }
-        message.tps  = tpsPerClient;
+        
         message['clients'] = this.zoo.clientsPerHost;
         return this._sendZooMessage(message, clientArgs)
                 .then((number)=>{
