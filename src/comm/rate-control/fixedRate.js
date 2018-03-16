@@ -15,7 +15,7 @@ class BasicInterval extends RateInterface{
      */
     init(msg) {
         const tps = this.options.tps;
-        const tpsPerClient = msg.clients ? (tps / msg.clients) : tps;        
+        const tpsPerClient = msg.totalClients ? (tps / msg.totalClients) : tps;
         this.sleepTime = (tpsPerClient > 0) ? 1000/tpsPerClient : 0;
     }
 

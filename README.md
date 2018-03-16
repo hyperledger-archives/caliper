@@ -20,13 +20,12 @@ To learn more details, please refer to [Architecture introduction](docs/Architec
 ### Pre-requisites
 
 Make sure following tools are installed
-* NodeJS 6.X (higher versions may work but haven't been tested)
+* NodeJS 8.X
 * node-gyp
 * Docker
 * Docker-compose
-* Blockchain system for test
 
-Run `npm install` to install dependencies locally
+Run `npm install` in caliper folder to install dependencies locally
 
 ### Install blockchain SDKs
 * Fabric
@@ -61,8 +60,7 @@ cd ~/caliper/benchmark/simple
 node main.js
 ```
 
-Each benchmark is provided along with some networks under test which are defined in [*caliper/network*](./network) folder.
-The network can be deployed automatically by using *'command'* object in the configuration file to define the bootstrap commands, as well as the clear-up commands, e.g
+Some example SUTs are provided in [*caliper/network*](./network) folder, they can be launched automatically before the test by setting the bootstrap commands in the configuration file, e.g
 ```json
 {
   "command" : {
@@ -71,11 +69,12 @@ The network can be deployed automatically by using *'command'* object in the con
   }
 }
 ```
+The scripts defined in *command.start* will be called before the test, and the scripts defined in *command.end* will be called after the finish of all tests. You can use them to define any preparation or clean-up works.  
 
-User's own existing blockchain network can also be integrated with the benchmark, as long as the network is properly configured by the configuration file. See [Confgituraion Introduction](./docs/Architecture.md#configuration-file) to learn how to write the configuration.
+You can also run the test with your own blockchain network, a network configuration should be provided and corresponding file path should be specified in  configuration file's *blockchain.config*. 
 
 Note:
-* When running the benchmark, multiple blockchain clients will be launched locally to generate and submit transactions to the SUT. The number of launched clients as well as testing workload can be defined using the configuration file.   
+* When running the benchmark, one or more blockchain clients will be used to generate and submit transactions to the SUT. The number of launched clients as well as testing workload can be defined using the [configuration file](./docs/Architecture.md#configuration-file).  
 * A HTML report will be generated automatically after the testing.
 
 **Alternative**

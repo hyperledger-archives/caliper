@@ -142,6 +142,7 @@ var Client = class {
     * functions for CLIENT_LOCAL
     */
     _startLocalTest(message, clientArgs) {
+        message.totalClients = this.number;
         return clientUtil.startTest(this.number, message, clientArgs, this.updates.data, this.results);
     }
 
@@ -261,7 +262,8 @@ var Client = class {
             return reject(new Error('Unconditioned transaction rate driving mode'));
         }
         
-        message['clients'] = this.zoo.clientsPerHost;
+        message.clients = this.zoo.clientsPerHost;
+        message.totalClients = this.zoo.clientsPerHost * number;
         return this._sendZooMessage(message, clientArgs)
                 .then((number)=>{
                     if(number > 0) {
